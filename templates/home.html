@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h4 class="mb-0">
+            <i class="bi bi-house me-2"></i>Home
+        </h4>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-12">
+                <h5>Bem-vindo ao Sistema ERP</h5>
+                <p class="text-muted">Selecione uma opção no menu de navegação para começar.</p>
+                
+                <div class="row mt-4">
+                    <div class="col-md-3 mb-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <i class="bi bi-people display-4 text-primary"></i>
+                                <h5 class="card-title mt-2">Funcionários</h5>
+                                <p class="card-text">Gerencie seus funcionários</p>
+                                <a href="{{ url_for('administrativo.funcionarios') }}" class="btn btn-primary btn-sm">Acessar</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <i class="bi bi-bar-chart display-4 text-success"></i>
+                                <h5 class="card-title mt-2">Dashboards</h5>
+                                <p class="card-text">Visualize métricas e relatórios</p>
+                                <a href="{{ url_for('main.dashboards') }}" class="btn btn-success btn-sm">Acessar</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <i class="bi bi-currency-dollar display-4 text-warning"></i>
+                                <h5 class="card-title mt-2">Financeiro</h5>
+                                <p class="card-text">Controle financeiro</p>
+                                <a href="{{ url_for('main.financeiro') }}" class="btn btn-warning btn-sm">Acessar</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <i class="bi bi-box-seam display-4 text-info"></i>
+                                <h5 class="card-title mt-2">Estoque</h5>
+                                <p class="card-text">Controle de estoque</p>
+                                <a href="{{ url_for('main.estoque') }}" class="btn btn-info btn-sm">Acessar</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

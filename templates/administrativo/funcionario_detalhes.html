@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <button class="btn btn-secondary" onclick="window.location.href='{{ url_for('administrativo.funcionarios') }}'">
+            <i class="bi bi-arrow-left me-1"></i>Voltar
+        </button>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-person-fill me-2"></i>Dados do Funcionário
+                </h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <th width="30%">ID:</th>
+                        <td>{{ funcionario.id_funcionario }}</td>
+                    </tr>
+                    <tr>
+                        <th>Nome:</th>
+                        <td>{{ funcionario.nome_funcionario }}</td>
+                    </tr>
+                    <tr>
+                        <th>Salário:</th>
+                        <td>{{ funcionario.salario_funcionario | currency_format }}</td>
+                    </tr>
+                    <tr>
+                        <th>Criado em:</th>
+                        <td>{{ funcionario.CREATED_AT.strftime('%d/%m/%Y %H:%M') }}</td>
+                    </tr>
+                    <tr>
+                        <th>Atualizado em:</th>
+                        <td>{{ funcionario.UPDATED_AT.strftime('%d/%m/%Y %H:%M') }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-bank2 me-2"></i>Dados Bancários
+                </h5>
+                {% if not funcionario.dados_bancarios %}
+                <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#modalDadosBancarios" onclick="prepararNovoDadosBancarios()">
+                    <i class="bi bi-plus-circle me-1"></i>Adicionar
+                </button>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if funcionario.dados_bancarios %}
+                    {% for dados in funcionario.dados_bancarios %}
+                    <table class="table table-borderless">
+                        <tr>
+                            <th width="30%">Banco:</th>
+                            <td>{{ dados.banco.NOME_BANCO }} ({{ dados.banco.COD_BANCO }})</td>
+                        </tr>
+                        <tr>
+                            <th>Tipo de Conta:</th>
+                            <td>{{ dados.tipo_conta_obj.descricao }}</td>
+                        </tr>
+                        <tr>
+                            <th>Nome do Titular:</th>
+                            <td>{{ dados.nome_titular }}</td>
+                        </tr>
+                        <tr>
+                            <th>Tipo de Chave PIX:</th>
+                            <td>{{ dados.tipo_chave_pix_obj.descricao }}</td>
+                        </tr>
+                        <tr>
+                            <th>Chave PIX:</th>
+                            <td>{{ dados.chave_pix }}</td>
+                        </tr>
+                        <tr>
+                            <th>Criado em:</th>
+                            <td>{{ dados.CREATED_AT.strftime('%d/%m/%Y %H:%M') }}</td>
+                        </tr>
+                        <tr>
+                            <th>Atualizado em:</th>
+                            <td>{{ dados.UPDATED_AT.strftime('%d/%m/%Y %H:%M') }}</td>
+                        </tr>
+                    </table>
+                    <div class="mt-3">
+                        <button class="btn btn-sm btn-outline-primary" onclick="editarDadosBancarios({{ dados.id }}, {{ dados.id_banco }}, {{ dados.tipo_conta }}, '{{ dados.nome_titular }}', {{ dados.tipo_chave_pix }}, '{{ dados.chave_pix }}')">
+                            <i class="bi bi-pencil me-1"></i>Editar
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="excluirDadosBancarios({{ dados.id }})">
+                            <i class="bi bi-trash me-1"></i>Excluir
+                        </button>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-bank display-4 mb-3"></i>
+                        <p>Nenhum dado bancário cadastrado</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Dados Bancários -->
+<div class="modal fade" id="modalDadosBancarios" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="modalDadosBancariosTitle">
+                    <i class="bi bi-bank me-2"></i>Dados Bancários
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formDadosBancarios">
+                    <input type="hidden" id="db_id_funcionario" name="id_funcionario" value="{{ funcionario.id_funcionario }}">
+                    <input type="hidden" id="db_id_dados" name="id_dados">
+                    
+                    <div class="mb-3">
+                        <label for="id_banco" class="form-label">Banco</label>
+                        <select class="form-select" id="id_banco" name="id_banco" required>
+                            <option value="">Selecione...</option>
+                            {% for banco in bancos %}
+                            <option value="{{ banco.ID_BANCO }}">{{ banco.NOME_BANCO }} ({{ banco.COD_BANCO }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="tipo_conta" class="form-label">Tipo de Conta</label>
+                        <select class="form-select" id="tipo_conta" name="tipo_conta" required>
+                            <option value="">Selecione...</option>
+                            {% for tc in tipos_conta %}
+                            <option value="{{ tc.id }}">{{ tc.descricao }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="nome_titular" class="form-label">Nome do Titular</label>
+                        <input type="text" class="form-control" id="nome_titular" name="nome_titular" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="tipo_chave_pix" class="form-label">Tipo de Chave PIX</label>
+                        <select class="form-select" id="tipo_chave_pix" name="tipo_chave_pix" required>
+                            <option value="">Selecione...</option>
+                            {% for tp in tipos_pix %}
+                            <option value="{{ tp.id }}">{{ tp.descricao }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="chave_pix" class="form-label">Chave PIX</label>
+                        <input type="text" class="form-control" id="chave_pix" name="chave_pix" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="salvarDadosBancarios()">
+                    <i class="bi bi-save me-1"></i>Salvar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function prepararNovoDadosBancarios() {
+    $('#formDadosBancarios')[0].reset();
+    $('#db_id_dados').val('');
+    $('#nome_titular').val('{{ funcionario.nome_funcionario }}');
+    $('#modalDadosBancariosTitle').html('<i class="bi bi-bank me-2"></i>Adicionar Dados Bancários');
+}
+
+function editarDadosBancarios(id, id_banco, tipo_conta, nome_titular, tipo_chave_pix, chave_pix) {
+    $('#db_id_dados').val(id);
+    $('#id_banco').val(id_banco);
+    $('#tipo_conta').val(tipo_conta);
+    $('#nome_titular').val(nome_titular);
+    $('#tipo_chave_pix').val(tipo_chave_pix);
+    $('#chave_pix').val(chave_pix);
+    $('#modalDadosBancariosTitle').html('<i class="bi bi-pencil me-2"></i>Editar Dados Bancários');
+    $('#modalDadosBancarios').modal('show');
+}
+
+function salvarDadosBancarios() {
+    const id_banco = $('#id_banco').val();
+    const tipo_conta = $('#tipo_conta').val();
+    const nome_titular = $('#nome_titular').val();
+    const tipo_chave_pix = $('#tipo_chave_pix').val();
+    const chave_pix = $('#chave_pix').val();
+    
+    if (!id_banco || !tipo_conta || !nome_titular || !tipo_chave_pix || !chave_pix) {
+        alert('Preencha todos os campos!');
+        return;
+    }
+    
+    $.ajax({
+        url: '/administrativo/dados-bancarios/salvar',
+        method: 'POST',
+        data: $('#formDadosBancarios').serialize(),
+        success: function(response) {
+            if (response.success) {
+                $('#modalDadosBancarios').modal('hide');
+                location.reload();
+            }
+        },
+        error: function() {
+            alert('Erro ao salvar dados bancários!');
+        }
+    });
+}
+
+function excluirDadosBancarios(id) {
+    if (confirm('Tem certeza que deseja excluir estes dados bancários?')) {
+        $.ajax({
+            url: '/administrativo/dados-bancarios/excluir/' + id,
+            method: 'POST',
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                }
+            },
+            error: function() {
+                alert('Erro ao excluir dados bancários!');
+            }
+        });
+    }
+}
+</script>
+{% endblock %}

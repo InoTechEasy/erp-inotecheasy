@@ -1,0 +1,137 @@
+# Especificação Técnica: Módulo Comercial - Propostas
+
+Este documento apresenta a arquitetura de dados, o design de interface e as diretrizes para a geração de PDFs do módulo **Comercial > Propostas** do sistema ERP InoTechEasy. O modelo foi concebido para ser robusto, escalável e perfeitamente adaptável para implementação via IA (como a SWE 1.6 no Windsurf), utilizando Python no backend.
+
+---
+
+## 1. Arquitetura de Banco de Dados
+
+Para garantir a integridade relacional e suportar propostas complexas (com múltiplos itens, serviços e detalhamentos), a estrutura deve seguir o padrão *Master-Detail* (Mestre-Detalhe). O modelo é composto por três entidades principais: **Clientes**, **Propostas** (Cabeçalho) e **Itens da Proposta** (Detalhes).
+
+### 1.1. Entidade `clientes`
+A base para qualquer proposta comercial. Recomenda-se que esta tabela já esteja implementada ou seja criada antes do módulo de propostas.
+
+| Coluna | Tipo SQL Sugerido | Descrição e Regras de Negócio |
+| :--- | :--- | :--- |
+| `id` | Integer (PK) | Identificador único do cliente. |
+| `tipo_pessoa` | Char(1) | 'F' (Física) ou 'J' (Jurídica). |
+| `cpf_cnpj` | Varchar(14) | Documento de identificação (Único). |
+| `nome_razao_social` | Varchar(150) | Nome completo ou Razão Social. |
+| `email` | Varchar(100) | E-mail principal para envio da proposta. |
+| `telefone` | Varchar(20) | Telefone principal de contato. |
+| `endereco_completo` | Text | Endereço formatado para exibição no PDF. |
+| `created_at` | Timestamp | Data e hora de criação do registro. |
+
+### 1.2. Entidade `propostas` (Cabeçalho)
+Armazena os metadados e as informações globais da negociação comercial.
+
+| Coluna | Tipo SQL Sugerido | Descrição e Regras de Negócio |
+| :--- | :--- | :--- |
+| `id` | Integer (PK) | Identificador único da proposta. |
+| `numero_proposta` | Varchar(20) | Código legível e sequencial (ex: `PRP-2026-0001`) (Único). |
+| `cliente_id` | Integer (FK) | Chave estrangeira referenciando `clientes.id`. |
+| `funcionario_id` | Integer (FK) | Chave estrangeira referenciando o vendedor/responsável. |
+| `data_emissao` | Date | Data de geração da proposta (Default: data atual). |
+| `data_validade` | Date | Data limite para aceite (Default: emissão + 15 ou 30 dias). |
+| `status` | Varchar(20) | Domínio: 'Rascunho', 'Enviada', 'Aprovada', 'Rejeitada'. |
+| `condicoes_pagamento` | Text | Texto livre detalhando as condições (ex: "50% no aceite"). |
+| `observacoes_gerais` | Text | Notas de rodapé, exclusões de escopo ou garantias. |
+| `valor_total` | Decimal(12,2) | Soma do `valor_total_item` de todos os itens vinculados. |
+| `desconto_global` | Decimal(12,2) | Valor de desconto aplicado sobre o total. |
+| `valor_final` | Decimal(12,2) | Campo calculado: `valor_total` - `desconto_global`. |
+| `created_at` | Timestamp | Data e hora de criação. |
+| `updated_at` | Timestamp | Data e hora da última modificação. |
+
+### 1.3. Entidade `proposta_itens` (Detalhes)
+Permite a inclusão de múltiplos serviços, produtos ou licenças em uma única proposta, cada um com seu detalhamento específico.
+
+| Coluna | Tipo SQL Sugerido | Descrição e Regras de Negócio |
+| :--- | :--- | :--- |
+| `id` | Integer (PK) | Identificador único do item. |
+| `proposta_id` | Integer (FK) | Chave estrangeira referenciando `propostas.id` (On Delete Cascade). |
+| `tipo_item` | Varchar(30) | Domínio: 'Serviço', 'Produto', 'Licença', 'Consultoria'. |
+| `descricao_curta` | Varchar(255) | Título do serviço/produto. |
+| `detalhamento` | Text | Escopo técnico detalhado (fundamental para o PDF). |
+| `quantidade` | Decimal(10,2) | Quantidade (horas, unidades, meses). |
+| `valor_unitario` | Decimal(12,2) | Preço por unidade. |
+| `valor_total_item` | Decimal(12,2) | Campo calculado: `quantidade` * `valor_unitario`. |
+| `ordem_exibicao` | Integer | Define a sequência em que os itens aparecerão no PDF. |
+
+---
+
+## 2. Design do Formulário e Fluxo da Aplicação (Frontend)
+
+Para proporcionar uma excelente experiência de usuário (UX), a tela de criação/edição de propostas deve adotar um layout dinâmico, evitando recarregamentos de página.
+
+### 2.1. Seção Superior: Dados Gerais
+- **Seleção de Cliente:** Um campo de busca com *autocomplete*. Ao selecionar o cliente, os campos de contato (e-mail, telefone) devem ser preenchidos automaticamente em modo somente leitura para conferência.
+- **Responsável:** Dropdown carregando os funcionários cadastrados no sistema.
+- **Datas e Status:** Campos de data com preenchimento automático inteligente (Emissão = hoje; Validade = hoje + 15 dias). O status inicial deve ser sempre "Rascunho".
+
+### 2.2. Seção Central: Tabela Dinâmica de Itens
+- Uma interface onde o usuário clica em **"+ Adicionar Item"** para inserir uma nova linha na tabela.
+- **Campos por linha:**
+  - `Tipo` (Dropdown).
+  - `Descrição` (Input Text).
+  - `Detalhamento` (Textarea expansível).
+  - `Qtd` e `Vlr. Unitário` (Inputs numéricos).
+  - `Vlr. Total` (Calculado via JavaScript em tempo real, *readonly*).
+  - Botão de exclusão (ícone de lixeira) para remover a linha.
+
+### 2.3. Seção Inferior: Fechamento e Condições
+- **Resumo Financeiro:** Exibição em tempo real do Subtotal (soma dos itens), campo para inserção de Desconto, e o Valor Final calculado.
+- **Textos Padrão:** Áreas de texto rico (Rich Text Editor) para `Condições de Pagamento` e `Observações`.
+  - *Dica de UX:* Incluir botões de "Inserir Template" (ex: "Template Padrão 50/50", "Template Mensalidade") para agilizar a digitação.
+
+---
+
+## 3. Geração do PDF da Proposta (Boas Práticas)
+
+A proposta em PDF é o documento final que o cliente receberá. Em Python, a abordagem mais moderna e manutenível é utilizar templates HTML/CSS renderizados para PDF.
+
+### 3.1. Bibliotecas Recomendadas
+- **WeasyPrint:** Excelente suporte a CSS moderno (Grid, Flexbox, paginação).
+- **xhtml2pdf:** Alternativa sólida e amplamente utilizada no ecossistema Django/Flask.
+- **Jinja2:** Para a injeção dinâmica dos dados da proposta no template HTML.
+
+### 3.2. Estrutura Visual do Documento PDF
+
+O layout do PDF deve transmitir profissionalismo e clareza. A estrutura sugerida é:
+
+1. **Cabeçalho (Header):**
+   - Logotipo da InoTechEasy alinhado à esquerda.
+   - Título "PROPOSTA COMERCIAL" e o `numero_proposta` em destaque à direita.
+   - Bloco com Data de Emissão e Data de Validade.
+
+2. **Dados do Cliente:**
+   - Uma caixa estilizada contendo Razão Social, CNPJ, Endereço Completo e Contatos.
+
+3. **Tabela de Escopo (Itens da Proposta):**
+   - Design limpo, com cabeçalho de tabela com fundo escuro e texto claro.
+   - Colunas: Item, Descrição, Qtd, Vlr. Unit, Vlr. Total.
+   - **Tratamento do Detalhamento:** Se o campo `detalhamento` estiver preenchido, ele deve renderizar em uma linha mesclada (colspan) logo abaixo do item principal, utilizando uma fonte menor, cor cinza escuro e estilo itálico. Isso mantém a tabela limpa e o escopo claro.
+
+4. **Resumo Financeiro:**
+   - Bloco alinhado à direita, abaixo da tabela.
+   - Linhas para Subtotal, Descontos (se houver) e o **Valor Final** em negrito e fonte maior.
+
+5. **Condições Comerciais e Observações:**
+   - Títulos de seção claros ("Condições de Pagamento", "Observações Gerais").
+   - Renderização do texto preservando as quebras de linha inseridas no formulário.
+
+6. **Rodapé (Footer) e Assinaturas:**
+   - Espaço reservado para "De acordo" (Assinatura do Cliente e Data).
+   - Rodapé fixo em todas as páginas contendo: Site, E-mail de contato, Telefone e Numeração de Página (ex: "Página 1 de 3").
+
+---
+
+## 4. Prompt Sugerido para a IA (Windsurf / SWE 1.6)
+
+Para acelerar o desenvolvimento, você pode fornecer o seguinte prompt para a sua IA no Windsurf:
+
+> "Atue como um desenvolvedor Python Full-Stack sênior. Preciso criar o módulo 'Comercial > Propostas' para o meu ERP.
+> 
+> **Tarefas:**
+> 1. **Backend (Modelos):** Crie as tabelas/modelos (usando o ORM do projeto) para `Proposta` e `PropostaItem`, estabelecendo relacionamento 1:N. A proposta deve ter vínculo com a tabela de `Clientes` e `Funcionarios`. Inclua campos para número da proposta, datas, status, totais, descontos e textos de condições.
+> 2. **Frontend (Formulário):** Desenvolva a tela de criação/edição de propostas. O formulário deve ter uma seção mestre (dados do cliente e totais) e uma tabela dinâmica para adicionar/remover múltiplos itens (serviços) via JavaScript, calculando os totais em tempo real.
+> 3. **Geração de PDF:** Implemente uma rota no backend que receba o ID da proposta e gere um PDF profissional. Utilize um template HTML/Jinja2 e uma biblioteca como WeasyPrint ou xhtml2pdf. O PDF deve conter o logotipo da empresa, dados do cliente, uma tabela detalhada com os itens (exibindo o detalhamento técnico de cada serviço), o resumo financeiro, as condições de pagamento e um espaço para assinatura do cliente no final."

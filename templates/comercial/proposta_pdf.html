@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proposta {{ proposta.numero_proposta }}</title>
+</head>
+<body>
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+        <tr>
+            <td style="width: 120px; vertical-align: top;">
+                {% if logo_base64 %}
+                <img src="data:image/png;base64,{{ logo_base64 }}" alt="Logo" style="width: 100px; height: 100px; margin: 0;">
+                {% else %}
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" style="width: 100px; height: 100px; margin: 0;">
+                {% endif %}
+            </td>
+            <td style="text-align: right; vertical-align: top;">
+                <p style="margin: 8px 0; color: #143060;"><strong>InoTechEasy - Serviços Inteligentes</strong></p>
+                <p style="margin: 8px 0; color: #143060;"><strong>CPF:</strong> 024.805.230-63</p>
+                <p style="margin: 8px 0; color: #143060;"><strong>ENDEREÇO:</strong> Rua Ribeira 33, Jardim do Trevo, Campinas/BR</p>
+                <p style="margin: 8px 0; color: #143060;"><strong>E-MAIL:</strong> inotecheasy@gmail.com</p>
+                <p style="margin: 8px 0; color: #143060;"><strong>PROPOSTA:</strong> {{ proposta.numero_proposta }}</p>
+                <p style="margin: 8px 0; color: #143060;"><strong>GERADA EM:</strong> {{ proposta.CREATED_AT.strftime('%d/%m/%Y %H:%M') if proposta.CREATED_AT }}</p>
+                <p style="margin: 8px 0; color: #143060;"><strong>RESPONSÁVEL:</strong> LEONARDO FEIJO DORNELES AGUIAR</p>
+                <p style="margin: 8px 0; color: #143060;"><strong>VALIDADE:</strong> {{ proposta.data_validade.strftime('%d/%m/%Y') if proposta.data_validade }}</p>
+            </td>
+        </tr>
+    </table>
+
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+        <tr>
+            <td style="border-bottom: 3px solid #2698BE; height: 10px;"></td>
+        </tr>
+    </table>
+
+    <div style="text-align: right; margin-bottom: 30px;">
+        <p style="margin: 8px 0; color: #143060;"><strong>DADOS DO CLIENTE:</strong></p>
+        <p style="margin: 8px 0; color: #143060;"><strong>{{ proposta.cliente.nome_razao_social }}</strong></p>
+        <p style="margin: 8px 0; color: #143060;"><strong>CNPJ/CPF:</strong> {{ proposta.cliente.cpf_cnpj }}</p>
+        <p style="margin: 8px 0; color: #143060;"><strong>Endereço:</strong> {{ proposta.cliente.endereco_completo or '-' }}</p>
+        <p style="margin: 8px 0; color: #143060;"><strong>E-mail:</strong> {{ proposta.cliente.email or '-' }}</p>
+        <p style="margin: 8px 0; color: #143060;"><strong>Telefone:</strong> {{ proposta.cliente.telefone or '-' }}</p>
+    </div>
+
+    <h3 style="color: #143060; margin-bottom: 15px; font-size: 14pt;">Itens da Proposta</h3>
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; border: 1px solid #2698BE;">
+        <thead>
+            <tr style="background-color: #2698BE; color: white;">
+                <th style="padding: 6px; text-align: left; width: 12%; font-size: 10pt;">Tipo</th>
+                <th style="padding: 6px; text-align: left; width: 23%; font-size: 10pt;">Descrição</th>
+                <th style="padding: 6px; text-align: left; width: 25%; font-size: 10pt;">Detalhamento</th>
+                <th style="padding: 6px; text-align: right; width: 10%; font-size: 10pt;">Qtd</th>
+                <th style="padding: 6px; text-align: right; width: 15%; font-size: 10pt;">Vlr. Unit</th>
+                <th style="padding: 6px; text-align: right; width: 15%; font-size: 10pt;">Vlr. Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in proposta.itens|sort(attribute='ordem_exibicao') %}
+            <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #2698BE;">{{ item.tipo_item }}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #2698BE;">{{ item.descricao_curta }}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #2698BE; font-size: 9pt; color: #15507D; font-style: italic; word-wrap: break-word; max-width: 200px;">{{ item.detalhamento or '' }}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #2698BE; text-align: right;">{{ item.quantidade }}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #2698BE; text-align: right;">R$ {{ "%.2f"|format(item.valor_unitario)|replace('.', ',') }}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #2698BE; text-align: right;">R$ {{ "%.2f"|format(item.valor_total_item)|replace('.', ',') }}</td>
+            </tr>
+            {% endfor %}
+            <tr style="background-color: #2698BE; color: white;">
+                <td colspan="4" style="padding: 6px; text-align: right; font-size: 10pt;"><strong>Subtotal:</strong></td>
+                <td colspan="2" style="padding: 6px; text-align: right; font-size: 10pt;">R$ {{ "%.2f"|format(proposta.valor_total)|replace('.', ',') }}</td>
+            </tr>
+            {% if proposta.desconto_global and proposta.desconto_global > 0 %}
+            <tr style="background-color: #2698BE; color: white;">
+                <td colspan="4" style="padding: 6px; text-align: right; font-size: 10pt;"><strong>Desconto:</strong></td>
+                <td colspan="2" style="padding: 6px; text-align: right; font-size: 10pt;">R$ {{ "%.2f"|format(proposta.desconto_global)|replace('.', ',') }}</td>
+            </tr>
+            {% endif %}
+            <tr style="background-color: #2698BE; color: white;">
+                <td colspan="4" style="padding: 6px; text-align: right; font-weight: bold; font-size: 12pt;"><strong>Valor Final:</strong></td>
+                <td colspan="2" style="padding: 6px; text-align: right; font-weight: bold; font-size: 12pt;">R$ {{ "%.2f"|format(proposta.valor_final)|replace('.', ',') }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    {% if proposta.condicoes_pagamento %}
+    <div style="margin-top: 30px;">
+        <h3 style="color: #143060; margin-bottom: 10px; font-size: 14pt;">Condições de Pagamento</h3>
+        <p style="white-space: pre-wrap; margin: 0; color: #15507D;">{{ proposta.condicoes_pagamento }}</p>
+    </div>
+    {% endif %}
+
+    {% if proposta.observacoes_gerais %}
+    <div style="margin-top: 30px;">
+        <h3 style="color: #143060; margin-bottom: 10px; font-size: 14pt;">Observações Gerais</h3>
+        <p style="white-space: pre-wrap; margin: 0; color: #15507D;">{{ proposta.observacoes_gerais }}</p>
+    </div>
+    {% endif %}
+
+    <div style="margin-top: 80px; display: flex; justify-content: space-between;">
+        <div style="text-align: center; flex: 1;">
+            <div style="border-top: 2px solid #2698BE; width: 250px; margin: 0 auto; padding-top: 10px;">
+                <p style="margin: 0; color: #143060;"><strong>{{ proposta.cliente.nome_razao_social }}</strong></p>
+                <p style="margin: 5px 0; font-size: 9pt; color: #15507D;">Assinatura</p>
+                <p style="margin: 0; font-size: 9pt; color: #15507D;">Data: ___/___/_______</p>
+            </div>
+        </div>
+        <div style="text-align: center; flex: 1;">
+            <div style="border-top: 2px solid #2698BE; width: 250px; margin: 0 auto; padding-top: 10px;">
+                <p style="margin: 0; color: #143060;"><strong>LEONARDO FEIJO DORNELES AGUIAR</strong></p>
+                <p style="margin: 5px 0; font-size: 9pt; color: #15507D;">Assinatura</p>
+                <p style="margin: 0; font-size: 9pt; color: #15507D;">Data: ___/___/_______</p>
+            </div>
+        </div>
+    </div>
+
+    <div style="margin-top: 50px; text-align: center; font-size: 9pt; color: #15507D; border-top: 2px solid #2698BE; padding-top: 10px;">
+        <p style="margin: 0;">Esta proposta é válida até {{ proposta.data_validade.strftime('%d/%m/%Y') if proposta.data_validade }}</p>
+    </div>
+</body>
+</html>

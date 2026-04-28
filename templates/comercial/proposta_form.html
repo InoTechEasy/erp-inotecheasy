@@ -1,0 +1,378 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h4 class="mb-0">
+            <i class="bi bi-file-earmark-text me-2"></i>
+            {% if proposta %}Editar Proposta{% else %}Nova Proposta{% endif %}
+        </h4>
+        <a href="{{ url_for('comercial.propostas') }}" class="btn btn-light btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>Voltar
+        </a>
+    </div>
+    <div class="card-body">
+        <form id="propostaForm">
+            <input type="hidden" id="propostaId" value="{{ proposta.id if proposta else '' }}">
+            
+            <!-- Dados Gerais -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="bi bi-person me-2"></i>Dados do Cliente</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Cliente *</label>
+                                <select class="form-select" id="clienteId" required>
+                                    <option value="">Selecione...</option>
+                                    {% for cliente in clientes %}
+                                    <option value="{{ cliente.id }}" 
+                                        {% if proposta and proposta.cliente_id == cliente.id %}selected{% endif %}
+                                        data-email="{{ cliente.email or '' }}"
+                                        data-telefone="{{ cliente.telefone or '' }}"
+                                        data-endereco="{{ cliente.endereco_completo or '' }}">
+                                        {{ cliente.nome_razao_social }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">E-mail</label>
+                                <input type="email" class="form-control" id="clienteEmail" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Telefone</label>
+                                <input type="text" class="form-control" id="clienteTelefone" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Endereço</label>
+                                <textarea class="form-control" id="clienteEndereco" rows="2" readonly></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Informações da Proposta</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Responsável *</label>
+                                <select class="form-select" id="funcionarioId" required>
+                                    <option value="">Selecione...</option>
+                                    {% for funcionario in funcionarios %}
+                                    <option value="{{ funcionario.id_funcionario }}"
+                                        {% if proposta and proposta.funcionario_id == funcionario.id_funcionario %}selected{% endif %}>
+                                        {{ funcionario.nome_funcionario }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Data Emissão *</label>
+                                    <input type="date" class="form-control" id="dataEmissao" required
+                                        value="{{ proposta.data_emissao.strftime('%Y-%m-%d') if proposta and proposta.data_emissao else '' }}">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Data Validade *</label>
+                                    <input type="date" class="form-control" id="dataValidade" required
+                                        value="{{ proposta.data_validade.strftime('%Y-%m-%d') if proposta and proposta.data_validade else '' }}">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Status</label>
+                                <select class="form-select" id="status">
+                                    <option value="Rascunho" {% if proposta and proposta.status == 'Rascunho' %}selected{% endif %}>Rascunho</option>
+                                    <option value="Enviada" {% if proposta and proposta.status == 'Enviada' %}selected{% endif %}>Enviada</option>
+                                    <option value="Aprovada" {% if proposta and proposta.status == 'Aprovada' %}selected{% endif %}>Aprovada</option>
+                                    <option value="Rejeitada" {% if proposta and proposta.status == 'Rejeitada' %}selected{% endif %}>Rejeitada</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Itens da Proposta -->
+            <div class="card mb-4">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="bi bi-list-check me-2"></i>Itens da Proposta</h6>
+                    <button type="button" class="btn btn-sm btn-primary" onclick="adicionarItem()">
+                        <i class="bi bi-plus-lg me-1"></i>Adicionar Item
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="tabelaItens">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th style="width: 15%">Tipo</th>
+                                    <th style="width: 25%">Descrição</th>
+                                    <th style="width: 20%">Detalhamento</th>
+                                    <th style="width: 10%">Qtd</th>
+                                    <th style="width: 10%">Vlr. Unit</th>
+                                    <th style="width: 10%">Vlr. Total</th>
+                                    <th style="width: 10%"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="itensBody">
+                                {% if proposta and proposta.itens %}
+                                    {% for item in proposta.itens|sort(attribute='ordem_exibicao') %}
+                                    <tr class="item-row">
+                                        <td>
+                                            <select class="form-select form-select-sm tipo-item" required>
+                                                <option value="Serviço" {% if item.tipo_item == 'Serviço' %}selected{% endif %}>Serviço</option>
+                                                <option value="Produto" {% if item.tipo_item == 'Produto' %}selected{% endif %}>Produto</option>
+                                                <option value="Licença" {% if item.tipo_item == 'Licença' %}selected{% endif %}>Licença</option>
+                                                <option value="Consultoria" {% if item.tipo_item == 'Consultoria' %}selected{% endif %}>Consultoria</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input type="text" class="form-control form-control-sm descricao-curta" value="{{ item.descricao_curta }}" required>
+                                        </td>
+                                        <td>
+                                            <textarea class="form-control form-control-sm detalhamento" rows="2">{{ item.detalhamento or '' }}</textarea>
+                                        </td>
+                                        <td>
+                                            <input type="number" class="form-control form-control-sm quantidade" step="0.01" value="{{ item.quantidade }}" required onchange="calcularTotais()">
+                                        </td>
+                                        <td>
+                                            <input type="number" class="form-control form-control-sm valor-unitario" step="0.01" value="{{ item.valor_unitario }}" required onchange="calcularTotais()">
+                                        </td>
+                                        <td>
+                                            <input type="text" class="form-control form-control-sm valor-total" value="{{ item.valor_total_item }}" readonly>
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-danger" onclick="removerItem(this)">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resumo Financeiro -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="bi bi-cash me-2"></i>Resumo Financeiro</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Subtotal</label>
+                                    <input type="text" class="form-control" id="subtotal" readonly>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Desconto Global</label>
+                                    <input type="number" class="form-control" id="descontoGlobal" step="0.01" value="{{ proposta.desconto_global if proposta else 0 }}" onchange="calcularTotais()">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Valor Final</label>
+                                <input type="text" class="form-control fw-bold fs-5" id="valorFinal" readonly>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="bi bi-file-text me-2"></i>Condições e Observações</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Condições de Pagamento</label>
+                                <textarea class="form-control" id="condicoesPagamento" rows="3">{{ proposta.condicoes_pagamento or '' }}</textarea>
+                                <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="inserirTemplate('50/50')">
+                                    Template 50/50
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="inserirTemplate('mensal')">
+                                    Template Mensalidade
+                                </button>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Observações Gerais</label>
+                                <textarea class="form-control" id="observacoesGerais" rows="3">{{ proposta.observacoes_gerais or '' }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botões -->
+            <div class="d-flex justify-content-end gap-2">
+                <a href="{{ url_for('comercial.propostas') }}" class="btn btn-secondary">
+                    <i class="bi bi-x-lg me-1"></i>Cancelar
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg me-1"></i>Salvar Proposta
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Carregar dados do cliente ao selecionar
+document.getElementById('clienteId').addEventListener('change', function() {
+    const select = this;
+    const option = select.options[select.selectedIndex];
+    
+    document.getElementById('clienteEmail').value = option.dataset.email || '';
+    document.getElementById('clienteTelefone').value = option.dataset.telefone || '';
+    document.getElementById('clienteEndereco').value = option.dataset.endereco || '';
+});
+
+// Definir data de validade automática
+document.getElementById('dataEmissao').addEventListener('change', function() {
+    const emissao = new Date(this.value);
+    const validade = new Date(emissao);
+    validade.setDate(validade.getDate() + 15);
+    document.getElementById('dataValidade').value = validade.toISOString().split('T')[0];
+});
+
+// Adicionar item
+function adicionarItem() {
+    const tbody = document.getElementById('itensBody');
+    const row = document.createElement('tr');
+    row.className = 'item-row';
+    row.innerHTML = `
+        <td>
+            <select class="form-select form-select-sm tipo-item" required>
+                <option value="Serviço">Serviço</option>
+                <option value="Produto">Produto</option>
+                <option value="Licença">Licença</option>
+                <option value="Consultoria">Consultoria</option>
+            </select>
+        </td>
+        <td>
+            <input type="text" class="form-control form-control-sm descricao-curta" required>
+        </td>
+        <td>
+            <textarea class="form-control form-control-sm detalhamento" rows="2"></textarea>
+        </td>
+        <td>
+            <input type="number" class="form-control form-control-sm quantidade" step="0.01" value="1" required onchange="calcularTotais()">
+        </td>
+        <td>
+            <input type="number" class="form-control form-control-sm valor-unitario" step="0.01" value="0" required onchange="calcularTotais()">
+        </td>
+        <td>
+            <input type="text" class="form-control form-control-sm valor-total" value="0" readonly>
+        </td>
+        <td>
+            <button type="button" class="btn btn-sm btn-danger" onclick="removerItem(this)">
+                <i class="bi bi-trash"></i>
+            </button>
+        </td>
+    `;
+    tbody.appendChild(row);
+}
+
+// Remover item
+function removerItem(button) {
+    const row = button.closest('tr');
+    row.remove();
+    calcularTotais();
+}
+
+// Calcular totais
+function calcularTotais() {
+    const rows = document.querySelectorAll('.item-row');
+    let subtotal = 0;
+    
+    rows.forEach(row => {
+        const quantidade = parseFloat(row.querySelector('.quantidade').value) || 0;
+        const valorUnitario = parseFloat(row.querySelector('.valor-unitario').value) || 0;
+        const valorTotal = quantidade * valorUnitario;
+        
+        row.querySelector('.valor-total').value = valorTotal.toFixed(2);
+        subtotal += valorTotal;
+    });
+    
+    const desconto = parseFloat(document.getElementById('descontoGlobal').value) || 0;
+    const valorFinal = subtotal - desconto;
+    
+    document.getElementById('subtotal').value = formatCurrency(subtotal);
+    document.getElementById('valorFinal').value = formatCurrency(valorFinal);
+}
+
+// Format currency
+function formatCurrency(value) {
+    return 'R$ ' + value.toFixed(2).replace('.', ',');
+}
+
+// Inserir template
+function inserirTemplate(tipo) {
+    const campo = document.getElementById('condicoesPagamento');
+    if (tipo === '50/50') {
+        campo.value = '50% no aceite e 50% na entrega do serviço.';
+    } else if (tipo === 'mensal') {
+        campo.value = 'Pagamento mensal com vencimento no dia 10 de cada mês.';
+    }
+}
+
+// Salvar proposta
+document.getElementById('propostaForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const itens = [];
+    document.querySelectorAll('.item-row').forEach((row, index) => {
+        itens.push({
+            tipo_item: row.querySelector('.tipo-item').value,
+            descricao_curta: row.querySelector('.descricao-curta').value,
+            detalhamento: row.querySelector('.detalhamento').value,
+            quantidade: row.querySelector('.quantidade').value,
+            valor_unitario: row.querySelector('.valor-unitario').value
+        });
+    });
+    
+    const data = {
+        id: document.getElementById('propostaId').value || null,
+        cliente_id: document.getElementById('clienteId').value,
+        funcionario_id: document.getElementById('funcionarioId').value,
+        data_emissao: document.getElementById('dataEmissao').value,
+        data_validade: document.getElementById('dataValidade').value,
+        status: document.getElementById('status').value,
+        condicoes_pagamento: document.getElementById('condicoesPagamento').value,
+        observacoes_gerais: document.getElementById('observacoesGerais').value,
+        desconto_global: document.getElementById('descontoGlobal').value,
+        itens: itens
+    };
+    
+    fetch('{{ url_for("comercial.salvar_proposta") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Proposta salva com sucesso! Número: ' + data.numero_proposta);
+            window.location.href = '{{ url_for("comercial.propostas") }}';
+        } else {
+            alert('Erro ao salvar: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Erro ao salvar proposta');
+    });
+});
+
+// Calcular totais ao carregar
+calcularTotais();
+</script>
+{% endblock %}

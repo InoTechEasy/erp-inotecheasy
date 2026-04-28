@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h4 class="mb-0">
+            <i class="bi bi-cash-coin me-2"></i>Lançamentos Financeiros
+        </h4>
+        <div>
+            <a href="{{ url_for('main.home') }}" class="btn btn-light btn-sm me-2">
+                <i class="bi bi-arrow-left me-1"></i>Voltar
+            </a>
+            <a href="{{ url_for('financeiro.novo_lancamento') }}" class="btn btn-light btn-sm">
+                <i class="bi bi-plus-lg me-1"></i>Novo Lançamento
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Data Vencimento</th>
+                        <th>Descrição</th>
+                        <th>Tipo</th>
+                        <th>Conta</th>
+                        <th>Valor Original</th>
+                        <th>Valor Pago</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lancamento in lancamentos %}
+                    <tr>
+                        <td>{{ lancamento.data_vencimento.strftime('%d/%m/%Y') if lancamento.data_vencimento else '-' }}</td>
+                        <td>{{ lancamento.descricao }}</td>
+                        <td>{{ lancamento.tipo_lancamento.descricao if lancamento.tipo_lancamento else '-' }}</td>
+                        <td>{{ lancamento.conta.nome if lancamento.conta else '-' }}</td>
+                        <td>{{ lancamento.valor_original|currency_format }}</td>
+                        <td>{{ lancamento.valor_pago|currency_format }}</td>
+                        <td>
+                            <span class="badge 
+                                {% if lancamento.status_calculado == 'PENDENTE' %}bg-warning
+                                {% elif lancamento.status_calculado == 'PAGO' or lancamento.status_calculado == 'RECEBIDO' %}bg-success
+                                {% elif lancamento.status_calculado == 'ATRASADO' %}bg-danger
+                                {% endif %}">
+                                {{ lancamento.status_calculado }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                {% if lancamento.status_calculado == 'PENDENTE' or lancamento.status_calculado == 'ATRASADO' %}
+                                <button type="button" class="btn btn-success" onclick="baixarLancamento({{ lancamento.id }}, {{ lancamento.valor_original }})">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                                {% endif %}
+                                <a href="{{ url_for('financeiro.editar_lancamento', id=lancamento.id) }}" class="btn btn-primary">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <button type="button" class="btn btn-danger" onclick="excluirLancamento({{ lancamento.id }})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Baixa -->
+<div class="modal fade" id="modalBaixa" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">Baixar Lançamento</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formBaixa">
+                    <input type="hidden" id="baixaLancamentoId">
+                    <div class="mb-3">
+                        <label class="form-label">Valor Pago</label>
+                        <input type="number" step="0.01" class="form-control" id="baixaValorPago" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Data Pagamento</label>
+                        <input type="date" class="form-control" id="baixaDataPagamento" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="confirmarBaixa()">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function excluirLancamento(id) {
+    if (confirm('Deseja realmente cancelar este lançamento?')) {
+        fetch(`{{ url_for('financeiro.excluir_lancamento', id=0) }}`.replace('0', id), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Erro ao excluir: ' + data.error);
+            }
+        });
+    }
+}
+
+function baixarLancamento(id, valor) {
+    document.getElementById('baixaLancamentoId').value = id;
+    document.getElementById('baixaValorPago').value = valor;
+    document.getElementById('baixaDataPagamento').value = new Date().toISOString().split('T')[0];
+    
+    const modal = new bootstrap.Modal(document.getElementById('modalBaixa'));
+    modal.show();
+}
+
+function confirmarBaixa() {
+    const id = document.getElementById('baixaLancamentoId').value;
+    const valorPago = document.getElementById('baixaValorPago').value;
+    const dataPagamento = document.getElementById('baixaDataPagamento').value;
+    
+    fetch(`{{ url_for('financeiro.baixar_lancamento', id=0) }}`.replace('0', id), {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            valor_pago: valorPago,
+            data_pagamento: dataPagamento
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalBaixa'));
+            modal.hide();
+            location.reload();
+        } else {
+            alert('Erro ao baixar: ' + data.error);
+        }
+    });
+}
+</script>
+{% endblock %}
