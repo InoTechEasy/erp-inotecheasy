@@ -240,45 +240,102 @@ def gerar_pdf(id):
     if not proposta:
         return redirect(url_for('comercial.propostas'))
     
-    from flask import render_template_string, url_for
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    from io import BytesIO
     import os
     
-    # Caminho base para imagens
-    base_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static')
-    logo_path = os.path.join(base_path, 'logo.png')
+    # Criar PDF
+    pdf_bytes = BytesIO()
+    doc = SimpleDocTemplate(pdf_bytes, pagesize=A4, rightMargin=2*cm, leftMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm)
     
-    # Converter logo para base64 se existir
-    logo_base64 = None
-    if os.path.exists(logo_path):
-        import base64
-        with open(logo_path, 'rb') as f:
-            logo_base64 = base64.b64encode(f.read()).decode('utf-8')
+    # Estilos
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle('CustomTitle', parent=styles['Heading1'], fontSize=18, spaceAfter=20, alignment=1)
+    header_style = ParagraphStyle('CustomHeader', parent=styles['Heading2'], fontSize=14, spaceAfter=10, spaceBefore=10)
+    normal_style = ParagraphStyle('CustomNormal', parent=styles['Normal'], fontSize=10, spaceAfter=5)
     
-    # Renderizar template HTML
-    html_content = render_template('comercial/proposta_pdf.html', proposta=proposta, logo_base64=logo_base64)
+    # Conteúdo do PDF
+    story = []
     
-    # Gerar PDF usando xhtml2pdf
+    # Título
+    story.append(Paragraph(f"PROPOSTA COMERCIAL {proposta.numero_proposta}", title_style))
+    story.append(Spacer(1, 0.5*cm))
+    
+    # Informações da proposta
+    data_proposta = [
+        ['Cliente:', proposta.cliente.nome_razao_social if proposta.cliente else ''],
+        ['CPF/CNPJ:', proposta.cliente.cpf_cnpj if proposta.cliente else ''],
+        ['Data de Emissão:', proposta.data_emissao.strftime('%d/%m/%Y') if proposta.data_emissao else ''],
+        ['Data de Validade:', proposta.data_validade.strftime('%d/%m/%Y') if proposta.data_validade else ''],
+        ['Status:', proposta.status],
+        ['Valor Total:', f'R$ {float(proposta.valor_final):,.2f}'.replace('.', ',')]
+    ]
+    
+    for label, value in data_proposta:
+        story.append(Paragraph(f"<b>{label}</b> {value}", normal_style))
+    
+    story.append(Spacer(1, 0.5*cm))
+    
+    # Condições de pagamento
+    if proposta.condicoes_pagamento:
+        story.append(Paragraph("<b>Condições de Pagamento:</b>", header_style))
+        story.append(Paragraph(proposta.condicoes_pagamento, normal_style))
+        story.append(Spacer(1, 0.5*cm))
+    
+    # Observações
+    if proposta.observacoes_gerais:
+        story.append(Paragraph("<b>Observações Gerais:</b>", header_style))
+        story.append(Paragraph(proposta.observacoes_gerais, normal_style))
+        story.append(Spacer(1, 0.5*cm))
+    
+    # Itens da proposta
+    story.append(Paragraph("<b>Itens da Proposta:</b>", header_style))
+    
+    # Tabela de itens
+    itens_data = [['#', 'Tipo', 'Descrição', 'Qtd', 'Valor Unit.', 'Total']]
+    
+    for idx, item in enumerate(proposta.itens, 1):
+        itens_data.append([
+            str(idx),
+            item.tipo_item,
+            item.descricao_curta,
+            str(float(item.quantidade)),
+            f'R$ {float(item.valor_unitario):,.2f}'.replace('.', ','),
+            f'R$ {float(item.valor_total_item):,.2f}'.replace('.', ',')
+        ])
+    
+    itens_table = Table(itens_data, colWidths=[0.5*cm, 2*cm, 6*cm, 1.5*cm, 2.5*cm, 2.5*cm])
+    itens_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+    ]))
+    
+    story.append(itens_table)
+    story.append(Spacer(1, 0.5*cm))
+    
+    # Total
+    story.append(Paragraph(f"<b>Valor Final: R$ {float(proposta.valor_final):,.2f}</b>".replace('.', ','), header_style))
+    
+    # Gerar PDF
     try:
-        from xhtml2pdf import pisa
-        from io import BytesIO
-        
-        # Criar PDF
-        pdf_bytes = BytesIO()
-        pisa.CreatePDF(
-            html_content,
-            dest=pdf_bytes,
-            encoding='utf-8',
-            link_callback=lambda uri, rel: os.path.join(base_path, uri.replace('/static/', ''))
-        )
-        
+        doc.build(story)
         pdf_bytes.seek(0)
         response = make_response(pdf_bytes.read())
         response.headers['Content-Type'] = 'application/pdf'
         response.headers['Content-Disposition'] = f'attachment; filename=proposta_{proposta.numero_proposta}.pdf'
-        
         return response
-    except ImportError:
-        return jsonify({'error': 'xhtml2pdf não está instalado. Execute: pip install xhtml2pdf'}), 500
     except Exception as e:
         return jsonify({'error': f'Erro ao gerar PDF: {str(e)}'}), 500
 
