@@ -385,17 +385,17 @@ def gerar_pdf(id):
     
     # Linhas de subtotal - usando Paragraph para renderizar HTML corretamente
     itens_data.append(['', '', '', '', 
-                      Paragraph('<b>Subtotal:</b>', cell_style), 
-                      Paragraph(f'<b>R$ {float(proposta.valor_total):.2f}</b>'.replace('.', ','), cell_style)])
+                      Paragraph('<b>Subtotal:</b>', ParagraphStyle('FooterLabel', parent=cell_style, textColor=colors.white)), 
+                      Paragraph(f'<b>R$ {float(proposta.valor_total):.2f}</b>'.replace('.', ','), ParagraphStyle('FooterValue', parent=cell_style, textColor=colors.white))])
     
     if proposta.desconto_global and float(proposta.desconto_global) > 0:
         itens_data.append(['', '', '', '', 
-                          Paragraph('<b>Desconto:</b>', cell_style), 
-                          Paragraph(f'<b>R$ {float(proposta.desconto_global):.2f}</b>'.replace('.', ','), cell_style)])
+                          Paragraph('<b>Desconto:</b>', ParagraphStyle('FooterLabel', parent=cell_style, textColor=colors.white)), 
+                          Paragraph(f'<b>R$ {float(proposta.desconto_global):.2f}</b>'.replace('.', ','), ParagraphStyle('FooterValue', parent=cell_style, textColor=colors.white))])
     
     itens_data.append(['', '', '', '', 
-                      Paragraph('<b>Valor Final:</b>', cell_style), 
-                      Paragraph(f'<b>R$ {float(proposta.valor_final):.2f}</b>'.replace('.', ','), cell_style)])
+                      Paragraph('<b>Valor Final:</b>', ParagraphStyle('FooterLabel', parent=cell_style, textColor=colors.white)), 
+                      Paragraph(f'<b>R$ {float(proposta.valor_final):.2f}</b>'.replace('.', ','), ParagraphStyle('FooterValue', parent=cell_style, textColor=colors.white))])
     
     # Ajustar larguras das colunas para melhor quebra de texto
     itens_table = Table(itens_data, colWidths=[2*cm, 3*cm, 4.5*cm, 1.5*cm, 2.5*cm, 2.5*cm], repeatRows=1)
@@ -453,7 +453,7 @@ def gerar_pdf(id):
         signature_line = Table(signature_line_data, colWidths=[7*cm], rowHeights=[0.5*cm])
         signature_line.setStyle(TableStyle([
             ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
-            ('LINEABOVE', (0, 0), (-1, 0), 2, COLOR_SECONDARY),
+            ('LINEABOVE', (0, 0), (-1, 0), 1, colors.black),
         ]))
         story.append(signature_line)
         story.append(Paragraph("Assinatura", header_style))
@@ -466,7 +466,7 @@ def gerar_pdf(id):
     signature_line = Table(signature_line_data, colWidths=[7*cm], rowHeights=[0.5*cm])
     signature_line.setStyle(TableStyle([
             ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
-            ('LINEABOVE', (0, 0), (-1, 0), 2, COLOR_SECONDARY),
+            ('LINEABOVE', (0, 0), (-1, 0), 1, colors.black),
         ]))
     story.append(signature_line)
     story.append(Paragraph("Assinatura", header_style))
