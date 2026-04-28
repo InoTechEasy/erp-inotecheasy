@@ -275,6 +275,7 @@ def gerar_pdf(id):
     
     # Variável para controle de páginas
     page_num = [0]
+    total_pages = [1]
     
     # Função para desenhar marca d'água e rodapé
     def footer(canvas, doc):
@@ -306,7 +307,7 @@ def gerar_pdf(id):
         # Número de página no canto inferior direito
         canvas.setFont('Helvetica', 9)
         canvas.setFillColor(COLOR_PRIMARY)
-        canvas.drawRightString(19*cm, 1*cm, f'{page_num[0]}/{{total}}')
+        canvas.drawRightString(19*cm, 1*cm, f'{page_num[0]}/{total_pages[0]}')
         
         canvas.restoreState()
     
@@ -314,6 +315,19 @@ def gerar_pdf(id):
     story = []
     
     # Cabeçalho com logo (esquerda) e informações da empresa (direita)
+    # Logo na esquerda e dados à direita
+    if os.path.exists(logo_path):
+        try:
+            logo_img = Image(logo_path, width=2.5*cm, height=2.5*cm)
+            header_table = Table([[logo_img, '']], colWidths=[3*cm, 13*cm])
+            header_table.setStyle(TableStyle([
+                ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ]))
+            story.append(header_table)
+        except:
+            pass
+    
     # Dados da empresa alinhados à direita
     company_data = [
         f'<b>InoTechEasy - Serviços Inteligentes</b>',
@@ -326,24 +340,8 @@ def gerar_pdf(id):
         f'<b>VALIDADE:</b> {proposta.data_validade.strftime("%d/%m/%Y") if proposta.data_validade else ""}'
     ]
     
-    company_paragraphs = [Paragraph(text, header_style) for text in company_data]
-    
-    # Logo na esquerda e dados à direita
-    if os.path.exists(logo_path):
-        try:
-            logo_img = Image(logo_path, width=2.5*cm, height=2.5*cm)
-            header_table = Table([[logo_img, company_paragraphs]], colWidths=[3*cm, 13*cm])
-        except:
-            header_table = Table([[company_paragraphs]], colWidths=[16*cm])
-    else:
-        header_table = Table([[company_paragraphs]], colWidths=[16*cm])
-    
-    header_table.setStyle(TableStyle([
-        ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-    ]))
-    
-    story.append(header_table)
+    for text in company_data:
+        story.append(Paragraph(text, header_style))
     
     story.append(Spacer(1, 0.2*cm))
     
@@ -449,26 +447,12 @@ def gerar_pdf(id):
     # Assinatura do cliente
     if proposta.cliente:
         story.append(Paragraph(f"<b>{proposta.cliente.nome_razao_social}</b>", header_style))
-        signature_line_data = [['']]
-        signature_line = Table(signature_line_data, colWidths=[7*cm], rowHeights=[0.5*cm])
-        signature_line.setStyle(TableStyle([
-            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
-            ('LINEABOVE', (0, 0), (-1, 0), 1, colors.black),
-        ]))
-        story.append(signature_line)
         story.append(Paragraph("Assinatura", header_style))
         story.append(Paragraph("Data: ___/___/_______", header_style))
         story.append(Spacer(1, 1*cm))
     
     # Assinatura do responsável
     story.append(Paragraph("<b>LEONARDO FEIJO DORNELES AGUIAR</b>", header_style))
-    signature_line_data = [['']]
-    signature_line = Table(signature_line_data, colWidths=[7*cm], rowHeights=[0.5*cm])
-    signature_line.setStyle(TableStyle([
-            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
-            ('LINEABOVE', (0, 0), (-1, 0), 1, colors.black),
-        ]))
-    story.append(signature_line)
     story.append(Paragraph("Assinatura", header_style))
     story.append(Paragraph("Data: ___/___/_______", header_style))
     
@@ -476,15 +460,16 @@ def gerar_pdf(id):
     try:
         doc.build(story, onFirstPage=footer, onLaterPages=footer)
         
-        # Substituir {total} pelo número real de páginas
-        pdf_content = pdf_bytes.getvalue()
-        total_pages = pdf_content.count(b'/Type /Page')
-        pdf_content = pdf_content.replace(b'{total}', str(total_pages).encode())
-        pdf_content = pdf_content.replace(b'/{{total}}', str(total_pages).encode())
+        # Atualizar número total de páginas
+        total_pages[0] = page_num[0]
         
-        pdf_bytes = BytesIO(pdf_content)
+        # Rebuild para atualizar os números de página
+        pdf_bytes = BytesIO()
+        doc = SimpleDocTemplate(pdf_bytes, pagesize=A4, rightMargin=2*cm, leftMargin=2*cm, topMargin=2*cm, bottomMargin=2.5*cm)
+        page_num[0] = 0
+        doc.build(story, onFirstPage=footer, onLaterPages=footer)
+        
         pdf_bytes.seek(0)
-        
         response = make_response(pdf_bytes.read())
         response.headers['Content-Type'] = 'application/pdf'
         response.headers['Content-Disposition'] = f'attachment; filename=proposta_{proposta.numero_proposta}.pdf'
