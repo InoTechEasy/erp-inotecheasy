@@ -244,9 +244,13 @@ def gerar_pdf(id):
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import cm
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+    from reportlab.platypus.tableofcontents import TableOfContents
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_JUSTIFY
+    from reportlab.pdfgen import canvas
     from io import BytesIO
     import os
+    import base64
     
     # Cores do template HTML
     COLOR_PRIMARY = colors.HexColor('#143060')  # Azul escuro
@@ -255,45 +259,102 @@ def gerar_pdf(id):
     
     # Criar PDF
     pdf_bytes = BytesIO()
-    doc = SimpleDocTemplate(pdf_bytes, pagesize=A4, rightMargin=2*cm, leftMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm)
+    doc = SimpleDocTemplate(pdf_bytes, pagesize=A4, rightMargin=2*cm, leftMargin=2*cm, topMargin=2*cm, bottomMargin=2.5*cm)
     
     # Estilos
     styles = getSampleStyleSheet()
-    header_style = ParagraphStyle('Header', parent=styles['Normal'], fontSize=9, textColor=COLOR_PRIMARY, spaceAfter=2)
+    header_style = ParagraphStyle('Header', parent=styles['Normal'], fontSize=9, textColor=COLOR_PRIMARY, spaceAfter=2, alignment=TA_RIGHT)
     title_style = ParagraphStyle('Title', parent=styles['Heading2'], fontSize=14, textColor=COLOR_PRIMARY, spaceAfter=15, spaceBefore=15)
     normal_style = ParagraphStyle('Normal', parent=styles['Normal'], fontSize=9, textColor=COLOR_DETAIL, spaceAfter=5)
+    justified_style = ParagraphStyle('Justified', parent=styles['Normal'], fontSize=9, textColor=COLOR_DETAIL, spaceAfter=5, alignment=TA_JUSTIFY)
+    
+    # Variável para controle de páginas
+    page_num = [0]
+    
+    # Função para desenhar rodapé com número de página
+    def footer(canvas, doc):
+        canvas.saveState()
+        page_num[0] += 1
+        total_pages = page_num[0]  # Será atualizado após o build
+        
+        # Linha separadora no topo do rodapé
+        canvas.setStrokeColor(COLOR_SECONDARY)
+        canvas.setLineWidth(2)
+        canvas.line(2*cm, 2.5*cm, 19*cm, 2.5*cm)
+        
+        # Texto de validade
+        canvas.setFont('Helvetica', 9)
+        canvas.setFillColor(COLOR_DETAIL)
+        validade_text = f'Esta proposta é válida até {proposta.data_validade.strftime("%d/%m/%Y") if proposta.data_validade else ""}'
+        canvas.drawCentredString(10.5*cm, 1.8*cm, validade_text)
+        
+        # Número de página no canto inferior direito
+        canvas.setFont('Helvetica', 9)
+        canvas.setFillColor(COLOR_PRIMARY)
+        canvas.drawRightString(19*cm, 1*cm, f'{page_num[0]}/{{total}}')
+        
+        canvas.restoreState()
     
     # Conteúdo do PDF
     story = []
     
-    # Cabeçalho com informações da empresa
-    header_data = [
-        ['InoTechEasy - Serviços Inteligentes', f'PROPOSTA: {proposta.numero_proposta}'],
-        ['CPF: 024.805.230-63', f'GERADA EM: {proposta.CREATED_AT.strftime("%d/%m/%Y %H:%M") if proposta.CREATED_AT else ""}'],
-        ['ENDEREÇO: Rua Ribeira 33, Jardim do Trevo, Campinas/BR', 'RESPONSÁVEL: LEONARDO FEIJO DORNELES AGUIAR'],
-        ['E-MAIL: inotecheasy@gmail.com', f'VALIDADE: {proposta.data_validade.strftime("%d/%m/%Y") if proposta.data_validade else ""}']
+    # Cabeçalho com logo e informações da empresa
+    base_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static')
+    logo_path = os.path.join(base_path, 'logo.png')
+    
+    # Tentar carregar logo
+    logo_image = None
+    if os.path.exists(logo_path):
+        try:
+            from reportlab.lib.utils import ImageReader
+            logo_image = ImageReader(logo_path)
+        except:
+            pass
+    
+    # Criar tabela do cabeçalho com logo (esquerda) e dados (direita)
+    if logo_image:
+        from reportlab.platypus import Image
+        img = Image(logo_path, width=2.5*cm, height=2.5*cm)
+        header_data = [[img, '']]
+    else:
+        header_data = [['', '']]
+    
+    # Dados da empresa alinhados à direita
+    company_data = [
+        f'<b>InoTechEasy - Serviços Inteligentes</b>',
+        f'<b>CPF:</b> 024.805.230-63',
+        f'<b>ENDEREÇO:</b> Rua Ribeira 33, Jardim do Trevo, Campinas/BR',
+        f'<b>E-MAIL:</b> inotecheasy@gmail.com',
+        f'<b>PROPOSTA:</b> {proposta.numero_proposta}',
+        f'<b>GERADA EM:</b> {proposta.CREATED_AT.strftime("%d/%m/%Y %H:%M") if proposta.CREATED_AT else ""}',
+        f'<b>RESPONSÁVEL:</b> LEONARDO FEIJO DORNELES AGUIAR',
+        f'<b>VALIDADE:</b> {proposta.data_validade.strftime("%d/%m/%Y") if proposta.data_validade else ""}'
     ]
     
-    header_table = Table(header_data, colWidths=[8*cm, 8*cm])
+    company_paragraphs = [Paragraph(text, header_style) for text in company_data]
+    
+    if logo_image:
+        header_table = Table([[company_paragraphs]], colWidths=[14*cm])
+    else:
+        header_table = Table([[company_paragraphs]], colWidths=[16*cm])
+    
     header_table.setStyle(TableStyle([
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('TEXTCOLOR', (0, 0), (-1, -1), COLOR_PRIMARY),
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+        ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
     ]))
     story.append(header_table)
-    story.append(Spacer(1, 0.3*cm))
+    story.append(Spacer(1, 0.2*cm))
     
-    # Linha separadora
+    # Linha separadora reduzida
     line_data = [['']]
-    line_table = Table(line_data, colWidths=[16*cm], rowHeights=[0.3*cm])
+    line_table = Table(line_data, colWidths=[16*cm], rowHeights=[0.15*cm])
     line_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), COLOR_SECONDARY),
     ]))
     story.append(line_table)
     story.append(Spacer(1, 0.5*cm))
     
-    # Dados do cliente
+    # Dados do cliente alinhados à direita
     story.append(Paragraph("<b>DADOS DO CLIENTE:</b>", header_style))
     if proposta.cliente:
         story.append(Paragraph(f"<b>{proposta.cliente.nome_razao_social}</b>", header_style))
@@ -306,7 +367,7 @@ def gerar_pdf(id):
     # Itens da proposta
     story.append(Paragraph("Itens da Proposta", title_style))
     
-    # Tabela de itens
+    # Tabela de itens com melhor quebra de texto
     itens_data = [['Tipo', 'Descrição', 'Detalhamento', 'Qtd', 'Vlr. Unit', 'Vlr. Total']]
     
     for item in sorted(proposta.itens, key=lambda x: x.ordem_exibicao):
@@ -319,31 +380,34 @@ def gerar_pdf(id):
             f'R$ {float(item.valor_total_item):.2f}'.replace('.', ',')
         ])
     
-    # Linhas de subtotal
-    itens_data.append(['Subtotal', '', '', '', '', f'R$ {float(proposta.valor_total):.2f}'.replace('.', ',')])
+    # Linhas de subtotal - labels mais próximos dos valores
+    itens_data.append(['', '', '', '', '<b>Subtotal:</b>', f'<b>R$ {float(proposta.valor_total):.2f}</b>'.replace('.', ',')])
     
     if proposta.desconto_global and float(proposta.desconto_global) > 0:
-        itens_data.append(['Desconto', '', '', '', '', f'R$ {float(proposta.desconto_global):.2f}'.replace('.', ',')])
+        itens_data.append(['', '', '', '', '<b>Desconto:</b>', f'<b>R$ {float(proposta.desconto_global):.2f}</b>'.replace('.', ',')])
     
-    itens_data.append(['Valor Final', '', '', '', '', f'R$ {float(proposta.valor_final):.2f}'.replace('.', ',')])
+    itens_data.append(['', '', '', '', '<b>Valor Final:</b>', f'<b>R$ {float(proposta.valor_final):.2f}</b>'.replace('.', ',')])
     
-    itens_table = Table(itens_data, colWidths=[2*cm, 3.5*cm, 4*cm, 1.5*cm, 2.5*cm, 2.5*cm])
+    # Ajustar larguras das colunas para melhor quebra de texto
+    itens_table = Table(itens_data, colWidths=[2*cm, 3*cm, 4.5*cm, 1.5*cm, 2.5*cm, 2.5*cm], repeatRows=1)
     
-    # Definir estilos para a tabela
+    # Definir estilos para a tabela com bordas completas
     table_style = [
         ('BACKGROUND', (0, 0), (-1, 0), COLOR_SECONDARY),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
         ('ALIGN', (3, 0), (-1, -1), 'RIGHT'),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, 0), 10),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
         ('TOPPADDING', (0, 0), (-1, 0), 6),
-        ('GRID', (0, 0), (-1, -len(itens_data)+4), 1, COLOR_SECONDARY),
+        ('GRID', (0, 0), (-1, -1), 1, COLOR_SECONDARY),  # Bordas em toda a tabela
         ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
         ('FONTSIZE', (0, 1), (-1, -1), 9),
         ('TEXTCOLOR', (0, 1), (-1, -1), COLOR_DETAIL),
         ('FONTSTYLE', (2, 1), (2, -len(itens_data)+4), 'ITALIC'),
+        ('WORDWRAP', (1, 1), (2, -len(itens_data)+4), 'CJK'),  # Melhor quebra de texto
     ]
     
     # Estilizar linhas de total
@@ -365,10 +429,10 @@ def gerar_pdf(id):
         story.append(Paragraph(proposta.condicoes_pagamento, normal_style))
         story.append(Spacer(1, 0.5*cm))
     
-    # Observações
+    # Observações com texto justificado
     if proposta.observacoes_gerais:
         story.append(Paragraph("Observações Gerais", title_style))
-        story.append(Paragraph(proposta.observacoes_gerais, normal_style))
+        story.append(Paragraph(proposta.observacoes_gerais, justified_style))
         story.append(Spacer(1, 0.5*cm))
     
     # Área de assinaturas
@@ -395,23 +459,19 @@ def gerar_pdf(id):
     ]))
     story.append(signature_table)
     
-    # Rodapé
-    story.append(Spacer(1, 1.5*cm))
-    footer_data = [[f'Esta proposta é válida até {proposta.data_validade.strftime("%d/%m/%Y") if proposta.data_validade else ""}']]
-    footer_table = Table(footer_data, colWidths=[16*cm])
-    footer_table.setStyle(TableStyle([
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('TEXTCOLOR', (0, 0), (-1, -1), COLOR_DETAIL),
-        ('LINEABOVE', (0, 0), (-1, 0), 2, COLOR_SECONDARY),
-        ('TOPPADDING', (0, 0), (-1, 0), 10),
-    ]))
-    story.append(footer_table)
-    
-    # Gerar PDF
+    # Gerar PDF com rodapé
     try:
-        doc.build(story)
+        doc.build(story, onFirstPage=footer, onLaterPages=footer)
+        
+        # Atualizar número total de páginas no PDF
+        pdf_content = pdf_bytes.getvalue()
+        # Substituir {total} pelo número real de páginas
+        total_pages = pdf_content.count(b'/Type /Page')
+        pdf_content = pdf_content.replace(b'{total}', str(total_pages).encode())
+        
+        pdf_bytes = BytesIO(pdf_content)
         pdf_bytes.seek(0)
+        
         response = make_response(pdf_bytes.read())
         response.headers['Content-Type'] = 'application/pdf'
         response.headers['Content-Disposition'] = f'attachment; filename=proposta_{proposta.numero_proposta}.pdf'
