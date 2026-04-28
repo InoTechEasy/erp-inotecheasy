@@ -314,18 +314,6 @@ def gerar_pdf(id):
     story = []
     
     # Cabeçalho com logo (esquerda) e informações da empresa (direita)
-    header_data = []
-    
-    # Logo na esquerda
-    if os.path.exists(logo_path):
-        try:
-            logo_img = Image(logo_path, width=2.5*cm, height=2.5*cm)
-            header_data.append([logo_img, ''])
-        except:
-            header_data.append(['', ''])
-    else:
-        header_data.append(['', ''])
-    
     # Dados da empresa alinhados à direita
     company_data = [
         f'<b>InoTechEasy - Serviços Inteligentes</b>',
@@ -340,8 +328,13 @@ def gerar_pdf(id):
     
     company_paragraphs = [Paragraph(text, header_style) for text in company_data]
     
+    # Logo na esquerda e dados à direita
     if os.path.exists(logo_path):
-        header_table = Table([[company_paragraphs]], colWidths=[13*cm])
+        try:
+            logo_img = Image(logo_path, width=2.5*cm, height=2.5*cm)
+            header_table = Table([[logo_img, company_paragraphs]], colWidths=[3*cm, 13*cm])
+        except:
+            header_table = Table([[company_paragraphs]], colWidths=[16*cm])
     else:
         header_table = Table([[company_paragraphs]], colWidths=[16*cm])
     
@@ -350,22 +343,13 @@ def gerar_pdf(id):
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
     ]))
     
-    if os.path.exists(logo_path):
-        header_with_logo = Table([[logo_img, header_table]], colWidths=[3*cm, 13*cm])
-        header_with_logo.setStyle(TableStyle([
-            ('ALIGN', (0, 0), (0, 0), 'LEFT'),
-            ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ]))
-        story.append(header_with_logo)
-    else:
-        story.append(header_table)
+    story.append(header_table)
     
     story.append(Spacer(1, 0.2*cm))
     
     # Linha separadora reduzida
     line_data = [['']]
-    line_table = Table(line_data, colWidths=[16*cm], rowHeights=[0.15*cm])
+    line_table = Table(line_data, colWidths=[16*cm], rowHeights=[0.1*cm])
     line_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), COLOR_SECONDARY),
     ]))
@@ -377,9 +361,9 @@ def gerar_pdf(id):
     if proposta.cliente:
         story.append(Paragraph(f"<b>{proposta.cliente.nome_razao_social}</b>", header_style))
         story.append(Paragraph(f"<b>CNPJ/CPF:</b> {proposta.cliente.cpf_cnpj}", header_style))
-        story.append(Paragraph(f"<b>Endereço:</b> {proposta.cliente.endereco_completo or '-'}", header_style))
-        story.append(Paragraph(f"<b>E-mail:</b> {proposta.cliente.email or '-'}", header_style))
-        story.append(Paragraph(f"<b>Telefone:</b> {proposta.cliente.telefone or '-'}", header_style))
+        story.append(Paragraph(f"<b>ENDEREÇO:</b> {proposta.cliente.endereco_completo or '-'}", header_style))
+        story.append(Paragraph(f"<b>E-MAIL:</b> {proposta.cliente.email or '-'}", header_style))
+        story.append(Paragraph(f"<b>TELEFONE:</b> {proposta.cliente.telefone or '-'}", header_style))
     story.append(Spacer(1, 0.5*cm))
     
     # Itens da proposta
@@ -424,7 +408,7 @@ def gerar_pdf(id):
         ('ALIGN', (3, 0), (-1, -1), 'RIGHT'),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
         ('TOPPADDING', (0, 0), (-1, 0), 6),
         ('GRID', (0, 0), (-1, -1), 1, COLOR_SECONDARY),  # Bordas em toda a tabela
@@ -468,11 +452,12 @@ def gerar_pdf(id):
         signature_line_data = [['']]
         signature_line = Table(signature_line_data, colWidths=[7*cm], rowHeights=[0.5*cm])
         signature_line.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
             ('LINEABOVE', (0, 0), (-1, 0), 2, COLOR_SECONDARY),
         ]))
         story.append(signature_line)
-        story.append(Paragraph("Assinatura", normal_style))
-        story.append(Paragraph("Data: ___/___/_______", normal_style))
+        story.append(Paragraph("Assinatura", header_style))
+        story.append(Paragraph("Data: ___/___/_______", header_style))
         story.append(Spacer(1, 1*cm))
     
     # Assinatura do responsável
@@ -480,11 +465,12 @@ def gerar_pdf(id):
     signature_line_data = [['']]
     signature_line = Table(signature_line_data, colWidths=[7*cm], rowHeights=[0.5*cm])
     signature_line.setStyle(TableStyle([
-        ('LINEABOVE', (0, 0), (-1, 0), 2, COLOR_SECONDARY),
-    ]))
+            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
+            ('LINEABOVE', (0, 0), (-1, 0), 2, COLOR_SECONDARY),
+        ]))
     story.append(signature_line)
-    story.append(Paragraph("Assinatura", normal_style))
-    story.append(Paragraph("Data: ___/___/_______", normal_style))
+    story.append(Paragraph("Assinatura", header_style))
+    story.append(Paragraph("Data: ___/___/_______", header_style))
     
     # Gerar PDF com rodapé e marca d'água
     try:
@@ -494,6 +480,7 @@ def gerar_pdf(id):
         pdf_content = pdf_bytes.getvalue()
         total_pages = pdf_content.count(b'/Type /Page')
         pdf_content = pdf_content.replace(b'{total}', str(total_pages).encode())
+        pdf_content = pdf_content.replace(b'/{{total}}', str(total_pages).encode())
         
         pdf_bytes = BytesIO(pdf_content)
         pdf_bytes.seek(0)
