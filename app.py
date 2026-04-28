@@ -10,7 +10,7 @@ import pytz
 
 app = Flask(__name__)
 app.secret_key = 'chave-secreta-super-segura-2024'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres.jqffbxrohqqymaeulqcd:Bancodaino%40@aws-1-us-west-2.pooler.supabase.com:6543/postgres?sslmode=require'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql+psycopg://postgres.jqffbxrohqqymaeulqcd:Bancodaino%40@aws-1-us-west-2.pooler.supabase.com:6543/postgres?sslmode=require'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Inicializar o banco de dados
