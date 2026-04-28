@@ -275,7 +275,6 @@ def gerar_pdf(id):
     
     # Variável para controle de páginas
     page_num = [0]
-    total_pages = [1]
     
     # Função para desenhar marca d'água e rodapé
     def footer(canvas, doc):
@@ -307,7 +306,7 @@ def gerar_pdf(id):
         # Número de página no canto inferior direito
         canvas.setFont('Helvetica', 9)
         canvas.setFillColor(COLOR_PRIMARY)
-        canvas.drawRightString(19*cm, 1*cm, f'{page_num[0]}/{total_pages[0]}')
+        canvas.drawRightString(19*cm, 1*cm, f'Página {page_num[0]}')
         
         canvas.restoreState()
     
@@ -458,15 +457,6 @@ def gerar_pdf(id):
     
     # Gerar PDF com rodapé e marca d'água
     try:
-        doc.build(story, onFirstPage=footer, onLaterPages=footer)
-        
-        # Atualizar número total de páginas
-        total_pages[0] = page_num[0]
-        
-        # Rebuild para atualizar os números de página
-        pdf_bytes = BytesIO()
-        doc = SimpleDocTemplate(pdf_bytes, pagesize=A4, rightMargin=2*cm, leftMargin=2*cm, topMargin=2*cm, bottomMargin=2.5*cm)
-        page_num[0] = 0
         doc.build(story, onFirstPage=footer, onLaterPages=footer)
         
         pdf_bytes.seek(0)
