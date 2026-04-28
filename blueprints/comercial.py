@@ -244,9 +244,9 @@ def gerar_pdf(id):
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import cm
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, Image
     from reportlab.platypus.tableofcontents import TableOfContents
-    from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_JUSTIFY
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_JUSTIFY, TA_LEFT
     from reportlab.pdfgen import canvas
     from io import BytesIO
     import os
@@ -256,6 +256,10 @@ def gerar_pdf(id):
     COLOR_PRIMARY = colors.HexColor('#143060')  # Azul escuro
     COLOR_SECONDARY = colors.HexColor('#2698BE')  # Azul claro
     COLOR_DETAIL = colors.HexColor('#15507D')  # Azul médio
+    
+    # Caminho da logo
+    base_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static')
+    logo_path = os.path.join(base_path, 'logo.png')
     
     # Criar PDF
     pdf_bytes = BytesIO()
@@ -271,12 +275,22 @@ def gerar_pdf(id):
     
     # Variável para controle de páginas
     page_num = [0]
-    total_pages = [1]
     
-    # Função para desenhar rodapé com número de página
+    # Função para desenhar marca d'água e rodapé
     def footer(canvas, doc):
         canvas.saveState()
         page_num[0] += 1
+        
+        # Marca d'água com logo (se existir)
+        if os.path.exists(logo_path):
+            try:
+                canvas.saveState()
+                canvas.setFillColor(COLOR_SECONDARY)
+                canvas.setFillAlpha(0.1)
+                canvas.drawImage(logo_path, 5*cm, 10*cm, width=10*cm, height=10*cm, mask='auto')
+                canvas.restoreState()
+            except:
+                pass
         
         # Linha separadora no topo do rodapé
         canvas.setStrokeColor(COLOR_SECONDARY)
@@ -292,26 +306,61 @@ def gerar_pdf(id):
         # Número de página no canto inferior direito
         canvas.setFont('Helvetica', 9)
         canvas.setFillColor(COLOR_PRIMARY)
-        canvas.drawRightString(19*cm, 1*cm, f'{page_num[0]}/{total_pages[0]}')
+        canvas.drawRightString(19*cm, 1*cm, f'{page_num[0]}/{{total}}')
         
         canvas.restoreState()
     
     # Conteúdo do PDF
     story = []
     
-    # Cabeçalho com logo e informações da empresa
-    base_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static')
-    logo_path = os.path.join(base_path, 'logo.png')
+    # Cabeçalho com logo (esquerda) e informações da empresa (direita)
+    header_data = []
     
-    # Dados da empresa alinhados à direita (usando Paragraph individual como cliente)
-    story.append(Paragraph("<b>InoTechEasy - Serviços Inteligentes</b>", header_style))
-    story.append(Paragraph("<b>CPF:</b> 024.805.230-63", header_style))
-    story.append(Paragraph("<b>ENDEREÇO:</b> Rua Ribeira 33, Jardim do Trevo, Campinas/BR", header_style))
-    story.append(Paragraph("<b>E-MAIL:</b> inotecheasy@gmail.com", header_style))
-    story.append(Paragraph(f"<b>PROPOSTA:</b> {proposta.numero_proposta}", header_style))
-    story.append(Paragraph(f"<b>GERADA EM:</b> {proposta.CREATED_AT.strftime('%d/%m/%Y %H:%M') if proposta.CREATED_AT else ''}", header_style))
-    story.append(Paragraph("<b>RESPONSÁVEL:</b> LEONARDO FEIJO DORNELES AGUIAR", header_style))
-    story.append(Paragraph(f"<b>VALIDADE:</b> {proposta.data_validade.strftime('%d/%m/%Y') if proposta.data_validade else ''}", header_style))
+    # Logo na esquerda
+    if os.path.exists(logo_path):
+        try:
+            logo_img = Image(logo_path, width=2.5*cm, height=2.5*cm)
+            header_data.append([logo_img, ''])
+        except:
+            header_data.append(['', ''])
+    else:
+        header_data.append(['', ''])
+    
+    # Dados da empresa alinhados à direita
+    company_data = [
+        f'<b>InoTechEasy - Serviços Inteligentes</b>',
+        f'<b>CPF:</b> 024.805.230-63',
+        f'<b>ENDEREÇO:</b> Rua Ribeira 33, Jardim do Trevo, Campinas/BR',
+        f'<b>E-MAIL:</b> inotecheasy@gmail.com',
+        f'<b>PROPOSTA:</b> {proposta.numero_proposta}',
+        f'<b>GERADA EM:</b> {proposta.CREATED_AT.strftime("%d/%m/%Y %H:%M") if proposta.CREATED_AT else ""}',
+        f'<b>RESPONSÁVEL:</b> LEONARDO FEIJO DORNELES AGUIAR',
+        f'<b>VALIDADE:</b> {proposta.data_validade.strftime("%d/%m/%Y") if proposta.data_validade else ""}'
+    ]
+    
+    company_paragraphs = [Paragraph(text, header_style) for text in company_data]
+    
+    if os.path.exists(logo_path):
+        header_table = Table([[company_paragraphs]], colWidths=[13*cm])
+    else:
+        header_table = Table([[company_paragraphs]], colWidths=[16*cm])
+    
+    header_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+    ]))
+    
+    if os.path.exists(logo_path):
+        header_with_logo = Table([[logo_img, header_table]], colWidths=[3*cm, 13*cm])
+        header_with_logo.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+            ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ]))
+        story.append(header_with_logo)
+    else:
+        story.append(header_table)
+    
     story.append(Spacer(1, 0.2*cm))
     
     # Linha separadora reduzida
@@ -437,20 +486,18 @@ def gerar_pdf(id):
     story.append(Paragraph("Assinatura", normal_style))
     story.append(Paragraph("Data: ___/___/_______", normal_style))
     
-    # Gerar PDF com rodapé
+    # Gerar PDF com rodapé e marca d'água
     try:
         doc.build(story, onFirstPage=footer, onLaterPages=footer)
         
-        # Atualizar número total de páginas
-        total_pages[0] = page_num[0]
+        # Substituir {total} pelo número real de páginas
+        pdf_content = pdf_bytes.getvalue()
+        total_pages = pdf_content.count(b'/Type /Page')
+        pdf_content = pdf_content.replace(b'{total}', str(total_pages).encode())
         
-        # Rebuild para atualizar os números de página
-        pdf_bytes = BytesIO()
-        doc = SimpleDocTemplate(pdf_bytes, pagesize=A4, rightMargin=2*cm, leftMargin=2*cm, topMargin=2*cm, bottomMargin=2.5*cm)
-        page_num[0] = 0
-        doc.build(story, onFirstPage=footer, onLaterPages=footer)
-        
+        pdf_bytes = BytesIO(pdf_content)
         pdf_bytes.seek(0)
+        
         response = make_response(pdf_bytes.read())
         response.headers['Content-Type'] = 'application/pdf'
         response.headers['Content-Disposition'] = f'attachment; filename=proposta_{proposta.numero_proposta}.pdf'
