@@ -272,6 +272,7 @@ def gerar_pdf(id):
     normal_style = ParagraphStyle('Normal', parent=styles['Normal'], fontSize=9, textColor=COLOR_DETAIL, spaceAfter=5)
     justified_style = ParagraphStyle('Justified', parent=styles['Normal'], fontSize=9, textColor=COLOR_DETAIL, spaceAfter=5, alignment=TA_JUSTIFY)
     cell_style = ParagraphStyle('Cell', parent=styles['Normal'], fontSize=9, textColor=COLOR_DETAIL)
+    header_cell_style = ParagraphStyle('HeaderCell', parent=styles['Normal'], fontSize=12, textColor=colors.white, fontName='Helvetica-Bold')
     
     # Variável para controle de páginas
     page_num = [0]
@@ -314,20 +315,7 @@ def gerar_pdf(id):
     story = []
     
     # Cabeçalho com logo (esquerda) e informações da empresa (direita)
-    # Logo na esquerda e dados à direita
-    if os.path.exists(logo_path):
-        try:
-            logo_img = Image(logo_path, width=2.5*cm, height=2.5*cm)
-            header_table = Table([[logo_img, '']], colWidths=[3*cm, 13*cm])
-            header_table.setStyle(TableStyle([
-                ('ALIGN', (0, 0), (0, 0), 'LEFT'),
-                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ]))
-            story.append(header_table)
-        except:
-            pass
-    
-    # Dados da empresa alinhados à direita
+    # Dados da empresa
     company_data = [
         f'<b>InoTechEasy - Serviços Inteligentes</b>',
         f'<b>CPF:</b> 024.805.230-63',
@@ -339,8 +327,25 @@ def gerar_pdf(id):
         f'<b>VALIDADE:</b> {proposta.data_validade.strftime("%d/%m/%Y") if proposta.data_validade else ""}'
     ]
     
-    for text in company_data:
-        story.append(Paragraph(text, header_style))
+    company_paragraphs = [Paragraph(text, header_style) for text in company_data]
+    
+    # Logo na esquerda e dados à direita na mesma tabela
+    if os.path.exists(logo_path):
+        try:
+            logo_img = Image(logo_path, width=2.5*cm, height=2.5*cm)
+            header_table = Table([[logo_img, company_paragraphs]], colWidths=[3*cm, 13*cm])
+            header_table.setStyle(TableStyle([
+                ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+                ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ]))
+            story.append(header_table)
+        except:
+            for p in company_paragraphs:
+                story.append(p)
+    else:
+        for p in company_paragraphs:
+            story.append(p)
     
     story.append(Spacer(1, 0.1*cm))
     
@@ -367,8 +372,8 @@ def gerar_pdf(id):
     story.append(Paragraph("Itens da Proposta", title_style))
     
     # Tabela de itens com Paragraph para quebra de texto
-    itens_data = [[Paragraph('Tipo', cell_style), Paragraph('Descrição', cell_style), Paragraph('Detalhamento', cell_style), 
-                   Paragraph('Qtd', cell_style), Paragraph('Vlr. Unit', cell_style), Paragraph('Vlr. Total', cell_style)]]
+    itens_data = [[Paragraph('Tipo', header_cell_style), Paragraph('Descrição', header_cell_style), Paragraph('Detalhamento', header_cell_style), 
+                   Paragraph('Qtd', header_cell_style), Paragraph('Vlr. Unit', header_cell_style), Paragraph('Vlr. Total', header_cell_style)]]
     
     for item in sorted(proposta.itens, key=lambda x: x.ordem_exibicao):
         itens_data.append([
@@ -400,12 +405,9 @@ def gerar_pdf(id):
     # Definir estilos para a tabela com bordas completas
     table_style = [
         ('BACKGROUND', (0, 0), (-1, 0), COLOR_SECONDARY),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
         ('ALIGN', (3, 0), (-1, -1), 'RIGHT'),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 12),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
         ('TOPPADDING', (0, 0), (-1, 0), 6),
         ('GRID', (0, 0), (-1, -1), 1, COLOR_SECONDARY),  # Bordas em toda a tabela
