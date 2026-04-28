@@ -263,7 +263,7 @@ def gerar_pdf(id):
     
     # Criar PDF
     pdf_bytes = BytesIO()
-    doc = SimpleDocTemplate(pdf_bytes, pagesize=A4, rightMargin=2*cm, leftMargin=2*cm, topMargin=2*cm, bottomMargin=2.5*cm)
+    doc = SimpleDocTemplate(pdf_bytes, pagesize=A4, rightMargin=2*cm, leftMargin=2*cm, topMargin=1*cm, bottomMargin=2.5*cm)
     
     # Estilos
     styles = getSampleStyleSheet()
@@ -342,7 +342,7 @@ def gerar_pdf(id):
     for text in company_data:
         story.append(Paragraph(text, header_style))
     
-    story.append(Spacer(1, 0.2*cm))
+    story.append(Spacer(1, 0.1*cm))
     
     # Linha separadora reduzida
     line_data = [['']]
