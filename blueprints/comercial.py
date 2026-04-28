@@ -244,11 +244,14 @@ def gerar_pdf(id):
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import cm
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
-    from reportlab.pdfbase import pdfmetrics
-    from reportlab.pdfbase.ttfonts import TTFont
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
     from io import BytesIO
     import os
+    
+    # Cores do template HTML
+    COLOR_PRIMARY = colors.HexColor('#143060')  # Azul escuro
+    COLOR_SECONDARY = colors.HexColor('#2698BE')  # Azul claro
+    COLOR_DETAIL = colors.HexColor('#15507D')  # Azul médio
     
     # Criar PDF
     pdf_bytes = BytesIO()
@@ -256,77 +259,154 @@ def gerar_pdf(id):
     
     # Estilos
     styles = getSampleStyleSheet()
-    title_style = ParagraphStyle('CustomTitle', parent=styles['Heading1'], fontSize=18, spaceAfter=20, alignment=1)
-    header_style = ParagraphStyle('CustomHeader', parent=styles['Heading2'], fontSize=14, spaceAfter=10, spaceBefore=10)
-    normal_style = ParagraphStyle('CustomNormal', parent=styles['Normal'], fontSize=10, spaceAfter=5)
+    header_style = ParagraphStyle('Header', parent=styles['Normal'], fontSize=9, textColor=COLOR_PRIMARY, spaceAfter=2)
+    title_style = ParagraphStyle('Title', parent=styles['Heading2'], fontSize=14, textColor=COLOR_PRIMARY, spaceAfter=15, spaceBefore=15)
+    normal_style = ParagraphStyle('Normal', parent=styles['Normal'], fontSize=9, textColor=COLOR_DETAIL, spaceAfter=5)
     
     # Conteúdo do PDF
     story = []
     
-    # Título
-    story.append(Paragraph(f"PROPOSTA COMERCIAL {proposta.numero_proposta}", title_style))
-    story.append(Spacer(1, 0.5*cm))
-    
-    # Informações da proposta
-    data_proposta = [
-        ['Cliente:', proposta.cliente.nome_razao_social if proposta.cliente else ''],
-        ['CPF/CNPJ:', proposta.cliente.cpf_cnpj if proposta.cliente else ''],
-        ['Data de Emissão:', proposta.data_emissao.strftime('%d/%m/%Y') if proposta.data_emissao else ''],
-        ['Data de Validade:', proposta.data_validade.strftime('%d/%m/%Y') if proposta.data_validade else ''],
-        ['Status:', proposta.status],
-        ['Valor Total:', f'R$ {float(proposta.valor_final):,.2f}'.replace('.', ',')]
+    # Cabeçalho com informações da empresa
+    header_data = [
+        ['InoTechEasy - Serviços Inteligentes', f'PROPOSTA: {proposta.numero_proposta}'],
+        ['CPF: 024.805.230-63', f'GERADA EM: {proposta.CREATED_AT.strftime("%d/%m/%Y %H:%M") if proposta.CREATED_AT else ""}'],
+        ['ENDEREÇO: Rua Ribeira 33, Jardim do Trevo, Campinas/BR', 'RESPONSÁVEL: LEONARDO FEIJO DORNELES AGUIAR'],
+        ['E-MAIL: inotecheasy@gmail.com', f'VALIDADE: {proposta.data_validade.strftime("%d/%m/%Y") if proposta.data_validade else ""}']
     ]
     
-    for label, value in data_proposta:
-        story.append(Paragraph(f"<b>{label}</b> {value}", normal_style))
+    header_table = Table(header_data, colWidths=[8*cm, 8*cm])
+    header_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('TEXTCOLOR', (0, 0), (-1, -1), COLOR_PRIMARY),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+    ]))
+    story.append(header_table)
+    story.append(Spacer(1, 0.3*cm))
     
+    # Linha separadora
+    line_data = [['']]
+    line_table = Table(line_data, colWidths=[16*cm], rowHeights=[0.3*cm])
+    line_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), COLOR_SECONDARY),
+    ]))
+    story.append(line_table)
+    story.append(Spacer(1, 0.5*cm))
+    
+    # Dados do cliente
+    story.append(Paragraph("<b>DADOS DO CLIENTE:</b>", header_style))
+    if proposta.cliente:
+        story.append(Paragraph(f"<b>{proposta.cliente.nome_razao_social}</b>", header_style))
+        story.append(Paragraph(f"<b>CNPJ/CPF:</b> {proposta.cliente.cpf_cnpj}", header_style))
+        story.append(Paragraph(f"<b>Endereço:</b> {proposta.cliente.endereco_completo or '-'}", header_style))
+        story.append(Paragraph(f"<b>E-mail:</b> {proposta.cliente.email or '-'}", header_style))
+        story.append(Paragraph(f"<b>Telefone:</b> {proposta.cliente.telefone or '-'}", header_style))
+    story.append(Spacer(1, 0.5*cm))
+    
+    # Itens da proposta
+    story.append(Paragraph("Itens da Proposta", title_style))
+    
+    # Tabela de itens
+    itens_data = [['Tipo', 'Descrição', 'Detalhamento', 'Qtd', 'Vlr. Unit', 'Vlr. Total']]
+    
+    for item in sorted(proposta.itens, key=lambda x: x.ordem_exibicao):
+        itens_data.append([
+            item.tipo_item,
+            item.descricao_curta,
+            item.detalhamento or '',
+            str(float(item.quantidade)),
+            f'R$ {float(item.valor_unitario):.2f}'.replace('.', ','),
+            f'R$ {float(item.valor_total_item):.2f}'.replace('.', ',')
+        ])
+    
+    # Linhas de subtotal
+    itens_data.append(['Subtotal', '', '', '', '', f'R$ {float(proposta.valor_total):.2f}'.replace('.', ',')])
+    
+    if proposta.desconto_global and float(proposta.desconto_global) > 0:
+        itens_data.append(['Desconto', '', '', '', '', f'R$ {float(proposta.desconto_global):.2f}'.replace('.', ',')])
+    
+    itens_data.append(['Valor Final', '', '', '', '', f'R$ {float(proposta.valor_final):.2f}'.replace('.', ',')])
+    
+    itens_table = Table(itens_data, colWidths=[2*cm, 3.5*cm, 4*cm, 1.5*cm, 2.5*cm, 2.5*cm])
+    
+    # Definir estilos para a tabela
+    table_style = [
+        ('BACKGROUND', (0, 0), (-1, 0), COLOR_SECONDARY),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('ALIGN', (3, 0), (-1, -1), 'RIGHT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
+        ('TOPPADDING', (0, 0), (-1, 0), 6),
+        ('GRID', (0, 0), (-1, -len(itens_data)+4), 1, COLOR_SECONDARY),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ('TEXTCOLOR', (0, 1), (-1, -1), COLOR_DETAIL),
+        ('FONTSTYLE', (2, 1), (2, -len(itens_data)+4), 'ITALIC'),
+    ]
+    
+    # Estilizar linhas de total
+    last_rows = len(itens_data) - (3 if proposta.desconto_global and float(proposta.desconto_global) > 0 else 2)
+    table_style.extend([
+        ('BACKGROUND', (0, last_rows), (-1, -1), COLOR_SECONDARY),
+        ('TEXTCOLOR', (0, last_rows), (-1, -1), colors.white),
+        ('FONTNAME', (0, last_rows), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, -1), (-1, -1), 12),
+    ])
+    
+    itens_table.setStyle(TableStyle(table_style))
+    story.append(itens_table)
     story.append(Spacer(1, 0.5*cm))
     
     # Condições de pagamento
     if proposta.condicoes_pagamento:
-        story.append(Paragraph("<b>Condições de Pagamento:</b>", header_style))
+        story.append(Paragraph("Condições de Pagamento", title_style))
         story.append(Paragraph(proposta.condicoes_pagamento, normal_style))
         story.append(Spacer(1, 0.5*cm))
     
     # Observações
     if proposta.observacoes_gerais:
-        story.append(Paragraph("<b>Observações Gerais:</b>", header_style))
+        story.append(Paragraph("Observações Gerais", title_style))
         story.append(Paragraph(proposta.observacoes_gerais, normal_style))
         story.append(Spacer(1, 0.5*cm))
     
-    # Itens da proposta
-    story.append(Paragraph("<b>Itens da Proposta:</b>", header_style))
+    # Área de assinaturas
+    story.append(Spacer(1, 2*cm))
     
-    # Tabela de itens
-    itens_data = [['#', 'Tipo', 'Descrição', 'Qtd', 'Valor Unit.', 'Total']]
+    signature_data = [
+        [f'{proposta.cliente.nome_razao_social if proposta.cliente else ""}', 'LEONARDO FEIJO DORNELES AGUIAR'],
+        ['Assinatura', 'Assinatura'],
+        ['Data: ___/___/_______', 'Data: ___/___/_______']
+    ]
     
-    for idx, item in enumerate(proposta.itens, 1):
-        itens_data.append([
-            str(idx),
-            item.tipo_item,
-            item.descricao_curta,
-            str(float(item.quantidade)),
-            f'R$ {float(item.valor_unitario):,.2f}'.replace('.', ','),
-            f'R$ {float(item.valor_total_item):,.2f}'.replace('.', ',')
-        ])
-    
-    itens_table = Table(itens_data, colWidths=[0.5*cm, 2*cm, 6*cm, 1.5*cm, 2.5*cm, 2.5*cm])
-    itens_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+    signature_table = Table(signature_data, colWidths=[7*cm, 7*cm])
+    signature_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTSIZE', (0, 0), (-1, 0), 9),
+        ('FONTSIZE', (0, 1), (-1, 1), 9),
+        ('FONTSIZE', (0, 2), (-1, 2), 9),
+        ('TEXTCOLOR', (0, 0), (-1, -1), COLOR_PRIMARY),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('FONTNAME', (0, 1), (-1, 1), 'Helvetica'),
+        ('FONTNAME', (0, 2), (-1, 2), 'Helvetica'),
+        ('LINEABOVE', (0, 0), (0, 0), 2, COLOR_SECONDARY),
+        ('LINEABOVE', (1, 0), (1, 0), 2, COLOR_SECONDARY),
     ]))
+    story.append(signature_table)
     
-    story.append(itens_table)
-    story.append(Spacer(1, 0.5*cm))
-    
-    # Total
-    story.append(Paragraph(f"<b>Valor Final: R$ {float(proposta.valor_final):,.2f}</b>".replace('.', ','), header_style))
+    # Rodapé
+    story.append(Spacer(1, 1.5*cm))
+    footer_data = [[f'Esta proposta é válida até {proposta.data_validade.strftime("%d/%m/%Y") if proposta.data_validade else ""}']]
+    footer_table = Table(footer_data, colWidths=[16*cm])
+    footer_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('TEXTCOLOR', (0, 0), (-1, -1), COLOR_DETAIL),
+        ('LINEABOVE', (0, 0), (-1, 0), 2, COLOR_SECONDARY),
+        ('TOPPADDING', (0, 0), (-1, 0), 10),
+    ]))
+    story.append(footer_table)
     
     # Gerar PDF
     try:
