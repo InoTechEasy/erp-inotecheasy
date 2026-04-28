@@ -356,7 +356,7 @@ def gerar_pdf(id):
         ('BACKGROUND', (0, 0), (-1, 0), COLOR_SECONDARY),
     ]))
     story.append(line_table)
-    story.append(Spacer(1, 0.5*cm))
+    story.append(Spacer(1, 0.2*cm))
     
     # Dados do cliente alinhados à direita
     story.append(Paragraph("<b>DADOS DO CLIENTE:</b>", header_style))
