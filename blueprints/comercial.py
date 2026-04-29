@@ -268,8 +268,8 @@ def gerar_pdf(id):
     # Estilos
     styles = getSampleStyleSheet()
     header_style = ParagraphStyle('Header', parent=styles['Normal'], fontSize=9, textColor=COLOR_PRIMARY, spaceAfter=2, alignment=TA_RIGHT)
-    title_style = ParagraphStyle('Title', parent=styles['Heading2'], fontSize=14, textColor=COLOR_PRIMARY, spaceAfter=15, spaceBefore=15)
-    normal_style = ParagraphStyle('Normal', parent=styles['Normal'], fontSize=9, textColor=COLOR_DETAIL, spaceAfter=5)
+    title_style = ParagraphStyle('Title', parent=styles['Heading2'], fontSize=14, textColor=COLOR_PRIMARY, spaceAfter=15, spaceBefore=15, alignment=TA_RIGHT)
+    normal_style = ParagraphStyle('Normal', parent=styles['Normal'], fontSize=9, textColor=COLOR_DETAIL, spaceAfter=5, alignment=TA_RIGHT)
     justified_style = ParagraphStyle('Justified', parent=styles['Normal'], fontSize=9, textColor=COLOR_DETAIL, spaceAfter=5, alignment=TA_JUSTIFY)
     cell_style = ParagraphStyle('Cell', parent=styles['Normal'], fontSize=9, textColor=COLOR_DETAIL)
     header_cell_style = ParagraphStyle('HeaderCell', parent=styles['Normal'], fontSize=12, textColor=colors.white, fontName='Helvetica-Bold')
@@ -400,7 +400,7 @@ def gerar_pdf(id):
                       Paragraph(f'<b>R$ {float(proposta.valor_final):.2f}</b>'.replace('.', ','), ParagraphStyle('FooterValue', parent=cell_style, textColor=colors.white))])
     
     # Ajustar larguras das colunas para melhor quebra de texto
-    itens_table = Table(itens_data, colWidths=[2*cm, 3*cm, 4.5*cm, 1.5*cm, 2.5*cm, 2.5*cm], repeatRows=1)
+    itens_table = Table(itens_data, colWidths=[2*cm, 3*cm, 4.5*cm, 1.5*cm, 2.5*cm, 2.5*cm], repeatRows=1, hAlign='RIGHT')
     
     # Definir estilos para a tabela com bordas completas
     table_style = [
