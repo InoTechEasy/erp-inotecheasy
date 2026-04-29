@@ -315,7 +315,20 @@ def gerar_pdf(id):
     story = []
     
     # Cabeçalho com logo (esquerda) e informações da empresa (direita)
-    # Dados da empresa
+    # Logo na esquerda
+    if os.path.exists(logo_path):
+        try:
+            logo_img = Image(logo_path, width=2.5*cm, height=2.5*cm)
+            logo_table = Table([[logo_img]], colWidths=[2.5*cm])
+            logo_table.setStyle(TableStyle([
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ]))
+            story.append(logo_table)
+        except:
+            pass
+    
+    # Dados da empresa alinhados à direita
     company_data = [
         f'<b>InoTechEasy - Serviços Inteligentes</b>',
         f'<b>CPF:</b> 024.805.230-63',
@@ -327,25 +340,8 @@ def gerar_pdf(id):
         f'<b>VALIDADE:</b> {proposta.data_validade.strftime("%d/%m/%Y") if proposta.data_validade else ""}'
     ]
     
-    company_paragraphs = [Paragraph(text, header_style) for text in company_data]
-    
-    # Logo na esquerda e dados à direita na mesma tabela
-    if os.path.exists(logo_path):
-        try:
-            logo_img = Image(logo_path, width=2.5*cm, height=2.5*cm)
-            header_table = Table([[logo_img, company_paragraphs]], colWidths=[3*cm, 13*cm])
-            header_table.setStyle(TableStyle([
-                ('ALIGN', (0, 0), (0, 0), 'LEFT'),
-                ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
-                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ]))
-            story.append(header_table)
-        except:
-            for p in company_paragraphs:
-                story.append(p)
-    else:
-        for p in company_paragraphs:
-            story.append(p)
+    for text in company_data:
+        story.append(Paragraph(text, header_style))
     
     story.append(Spacer(1, 0.1*cm))
     
