@@ -314,7 +314,7 @@ def gerar_pdf(id):
     # Conteúdo do PDF
     story = []
     
-    # Cabeçalho com logo (esquerda) e informações da empresa (direita)
+    # Cabeçalho com logo (esquerda) e informações da empresa + cliente (direita)
     # Dados da empresa
     company_data = [
         f'<b>InoTechEasy - Serviços Inteligentes</b>',
@@ -326,6 +326,15 @@ def gerar_pdf(id):
         f'<b>RESPONSÁVEL:</b> LEONARDO FEIJO DORNELES AGUIAR',
         f'<b>VALIDADE:</b> {proposta.data_validade.strftime("%d/%m/%Y") if proposta.data_validade else ""}'
     ]
+    
+    # Dados do cliente (seguindo na sequência)
+    if proposta.cliente:
+        company_data.append('<b>DADOS DO CLIENTE:</b>')
+        company_data.append(f'<b>{proposta.cliente.nome_razao_social}</b>')
+        company_data.append(f'<b>CNPJ/CPF:</b> {proposta.cliente.cpf_cnpj}')
+        company_data.append(f'<b>ENDEREÇO:</b> {proposta.cliente.endereco_completo or "-"}')
+        company_data.append(f'<b>E-MAIL:</b> {proposta.cliente.email or "-"}')
+        company_data.append(f'<b>TELEFONE:</b> {proposta.cliente.telefone or "-"}')
     
     company_paragraphs = [Paragraph(text, header_style) for text in company_data]
     
@@ -347,25 +356,6 @@ def gerar_pdf(id):
         for p in company_paragraphs:
             story.append(p)
     
-    story.append(Spacer(1, 0.26*cm))
-    
-    # Linha separadora reduzida
-    line_data = [['']]
-    line_table = Table(line_data, colWidths=[16*cm], rowHeights=[0.26*cm])
-    line_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), COLOR_SECONDARY),
-    ]))
-    story.append(line_table)
-    story.append(Spacer(1, 0.79*cm))
-    
-    # Dados do cliente alinhados à direita
-    story.append(Paragraph("<b>DADOS DO CLIENTE:</b>", header_style))
-    if proposta.cliente:
-        story.append(Paragraph(f"<b>{proposta.cliente.nome_razao_social}</b>", header_style))
-        story.append(Paragraph(f"<b>CNPJ/CPF:</b> {proposta.cliente.cpf_cnpj}", header_style))
-        story.append(Paragraph(f"<b>ENDEREÇO:</b> {proposta.cliente.endereco_completo or '-'}", header_style))
-        story.append(Paragraph(f"<b>E-MAIL:</b> {proposta.cliente.email or '-'}", header_style))
-        story.append(Paragraph(f"<b>TELEFONE:</b> {proposta.cliente.telefone or '-'}", header_style))
     story.append(Spacer(1, 0.5*cm))
     
     # Itens da proposta
