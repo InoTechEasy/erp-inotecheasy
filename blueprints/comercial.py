@@ -267,7 +267,7 @@ def gerar_pdf(id):
     
     # Estilos
     styles = getSampleStyleSheet()
-    header_style = ParagraphStyle('Header', parent=styles['Normal'], fontSize=9, textColor=COLOR_PRIMARY, spaceBefore=3, spaceAfter=3, alignment=TA_RIGHT)
+    header_style = ParagraphStyle('Header', parent=styles['Normal'], fontSize=9, textColor=COLOR_PRIMARY, spaceBefore=3, spaceAfter=3, alignment=TA_LEFT)
     title_style = ParagraphStyle('Title', parent=styles['Heading2'], fontSize=14, textColor=COLOR_PRIMARY, spaceAfter=15, spaceBefore=15)
     normal_style = ParagraphStyle('Normal', parent=styles['Normal'], fontSize=9, textColor=COLOR_DETAIL, spaceAfter=5)
     justified_style = ParagraphStyle('Justified', parent=styles['Normal'], fontSize=9, textColor=COLOR_DETAIL, spaceAfter=5, alignment=TA_JUSTIFY)
@@ -338,11 +338,11 @@ def gerar_pdf(id):
     
     company_paragraphs = [Paragraph(text, header_style) for text in company_data]
     
-    # Logo na esquerda e dados à direita na mesma linha
+    # Logo à direita e dados à esquerda na mesma linha
     if os.path.exists(logo_path):
         try:
             logo_img = Image(logo_path, width=2.64*cm, height=2.64*cm)
-            header_table = Table([[logo_img, company_paragraphs]], colWidths=[3.2*cm, 12.8*cm])
+            header_table = Table([[company_paragraphs, logo_img]], colWidths=[12.8*cm, 3.2*cm])
             header_table.setStyle(TableStyle([
                 ('ALIGN', (0, 0), (0, 0), 'LEFT'),
                 ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
