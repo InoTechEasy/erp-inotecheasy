@@ -267,7 +267,7 @@ def gerar_pdf(id):
     
     # Estilos
     styles = getSampleStyleSheet()
-    header_style = ParagraphStyle('Header', parent=styles['Normal'], fontSize=9, textColor=COLOR_PRIMARY, spaceAfter=2, alignment=TA_RIGHT)
+    header_style = ParagraphStyle('Header', parent=styles['Normal'], fontSize=9, textColor=COLOR_PRIMARY, spaceAfter=8, alignment=TA_RIGHT)
     title_style = ParagraphStyle('Title', parent=styles['Heading2'], fontSize=14, textColor=COLOR_PRIMARY, spaceAfter=15, spaceBefore=15)
     normal_style = ParagraphStyle('Normal', parent=styles['Normal'], fontSize=9, textColor=COLOR_DETAIL, spaceAfter=5)
     justified_style = ParagraphStyle('Justified', parent=styles['Normal'], fontSize=9, textColor=COLOR_DETAIL, spaceAfter=5, alignment=TA_JUSTIFY)
@@ -332,8 +332,8 @@ def gerar_pdf(id):
     # Logo na esquerda e dados à direita na mesma linha
     if os.path.exists(logo_path):
         try:
-            logo_img = Image(logo_path, width=2.5*cm, height=2.5*cm)
-            header_table = Table([[logo_img, company_paragraphs]], colWidths=[3*cm, 13*cm])
+            logo_img = Image(logo_path, width=2.64*cm, height=2.64*cm)
+            header_table = Table([[logo_img, company_paragraphs]], colWidths=[3.2*cm, 12.8*cm])
             header_table.setStyle(TableStyle([
                 ('ALIGN', (0, 0), (0, 0), 'LEFT'),
                 ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
@@ -347,16 +347,16 @@ def gerar_pdf(id):
         for p in company_paragraphs:
             story.append(p)
     
-    story.append(Spacer(1, 0.1*cm))
+    story.append(Spacer(1, 0.26*cm))
     
     # Linha separadora reduzida
     line_data = [['']]
-    line_table = Table(line_data, colWidths=[16*cm], rowHeights=[0.1*cm])
+    line_table = Table(line_data, colWidths=[16*cm], rowHeights=[0.26*cm])
     line_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), COLOR_SECONDARY),
     ]))
     story.append(line_table)
-    story.append(Spacer(1, 0.1*cm))
+    story.append(Spacer(1, 0.53*cm))
     
     # Dados do cliente alinhados à direita
     story.append(Paragraph("<b>DADOS DO CLIENTE:</b>", header_style))
