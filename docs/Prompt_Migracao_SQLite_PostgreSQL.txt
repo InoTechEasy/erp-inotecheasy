@@ -1,0 +1,212 @@
+================================================================================
+PROMPT PARA WINDSURF - MIGRACAO SQLITE PARA POSTGRESQL
+================================================================================
+
+Copie e cole TUDO isso no Windsurf (na IA SWE 1.6):
+
+================================================================================
+
+Atue como um Engenheiro de Software Sênior especializado em migrações de banco de dados.
+
+Preciso migrar meu projeto ERP Python do SQLite para PostgreSQL em nuvem (Supabase).
+
+TAREFA 1: ATUALIZAR A CONFIGURAÇÃO DE CONEXÃO
+===============================================
+Altere a configuração do SQLAlchemy no projeto para usar PostgreSQL em vez de SQLite.
+
+A nova Connection String do PostgreSQL é:
+postgresql://postgres:Bancodaino%40@db.jqffbxrohqqymaeuqlqcd.supabase.co:5432/postgres
+
+Procure no projeto pelos seguintes arquivos e altere a string de conexão:
+- config.py (ou qualquer arquivo de configuração)
+- .env (se existir)
+- main.py ou app.py (se a conexão estiver hardcoded)
+
+Procure por linhas como:
+  DATABASE_URL = "sqlite:///banco.db"
+  ou
+  SQLALCHEMY_DATABASE_URI = "sqlite:///banco.db"
+
+E substitua por:
+  DATABASE_URL = "postgresql://postgres:Bancodaino%40@db.jqffbxrohqqymaeuqlqcd.supabase.co:5432/postgres"
+  ou
+  SQLALCHEMY_DATABASE_URI = "postgresql://postgres:Bancodaino%40@db.jqffbxrohqqymaeuqlqcd.supabase.co:5432/postgres"
+
+Se houver um arquivo .env, adicione a variável:
+  DATABASE_URL=postgresql://postgres:Bancodaino%40@db.jqffbxrohqqymaeuqlqcd.supabase.co:5432/postgres
+
+TAREFA 2: INSTALAR O DRIVER POSTGRESQL
+=======================================
+Adicione o pacote psycopg2-binary ao requirements.txt (ou requirements.in).
+
+Se o arquivo requirements.txt não tiver psycopg2-binary, adicione esta linha:
+  psycopg2-binary==2.9.9
+
+Depois, instale as dependências:
+  pip install -r requirements.txt
+
+TAREFA 3: CRIAR SCRIPT DE MIGRAÇÃO DE DADOS
+============================================
+Crie um arquivo chamado "migrar_dados.py" na raiz do projeto com o seguinte código:
+
+---INICIO DO CODIGO---
+
+import sqlite3
+import os
+from sqlalchemy import create_engine, inspect
+from sqlalchemy.orm import sessionmaker
+
+# Configuração do banco SQLite antigo (local)
+sqlite_path = "banco.db"  # Altere se o nome do arquivo for diferente
+
+# Configuração do PostgreSQL novo (Supabase)
+postgres_url = "postgresql://postgres:Bancodaino%40@db.jqffbxrohqqymaeuqlqcd.supabase.co:5432/postgres"
+
+def migrar_dados():
+    """Migra dados do SQLite para PostgreSQL"""
+    
+    print("🔄 Iniciando migração de dados...")
+    
+    # Conectar ao SQLite
+    try:
+        sqlite_conn = sqlite3.connect(sqlite_path)
+        sqlite_cursor = sqlite_conn.cursor()
+        print("✅ Conectado ao SQLite")
+    except Exception as e:
+        print(f"❌ Erro ao conectar ao SQLite: {e}")
+        return
+    
+    # Conectar ao PostgreSQL
+    try:
+        pg_engine = create_engine(postgres_url)
+        pg_conn = pg_engine.connect()
+        print("✅ Conectado ao PostgreSQL")
+    except Exception as e:
+        print(f"❌ Erro ao conectar ao PostgreSQL: {e}")
+        return
+    
+    # Obter lista de tabelas do SQLite
+    sqlite_cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+    tables = sqlite_cursor.fetchall()
+    
+    if not tables:
+        print("⚠️  Nenhuma tabela encontrada no SQLite")
+        sqlite_conn.close()
+        pg_conn.close()
+        return
+    
+    print(f"\n📊 Tabelas encontradas: {len(tables)}")
+    
+    # Migrar cada tabela
+    for table_name in tables:
+        table_name = table_name[0]
+        print(f"\n🔄 Migrando tabela: {table_name}")
+        
+        try:
+            # Obter dados da tabela SQLite
+            sqlite_cursor.execute(f"SELECT * FROM {table_name}")
+            rows = sqlite_cursor.fetchall()
+            
+            # Obter nomes das colunas
+            sqlite_cursor.execute(f"PRAGMA table_info({table_name})")
+            columns = [col[1] for col in sqlite_cursor.fetchall()]
+            
+            if not rows:
+                print(f"   ⚠️  Tabela vazia: {table_name}")
+                continue
+            
+            # Inserir dados no PostgreSQL
+            for row in rows:
+                placeholders = ", ".join(["%s"] * len(columns))
+                column_names = ", ".join(columns)
+                insert_query = f"INSERT INTO {table_name} ({column_names}) VALUES ({placeholders}) ON CONFLICT DO NOTHING"
+                
+                try:
+                    pg_conn.execute(insert_query, row)
+                except Exception as e:
+                    print(f"   ⚠️  Erro ao inserir linha em {table_name}: {e}")
+            
+            pg_conn.commit()
+            print(f"   ✅ Tabela {table_name} migrada com sucesso ({len(rows)} registros)")
+        
+        except Exception as e:
+            print(f"   ❌ Erro ao migrar tabela {table_name}: {e}")
+    
+    # Fechar conexões
+    sqlite_conn.close()
+    pg_conn.close()
+    
+    print("\n✅ Migração concluída!")
+
+if __name__ == "__main__":
+    migrar_dados()
+
+---FIM DO CODIGO---
+
+TAREFA 4: EXECUTAR O SCRIPT DE MIGRAÇÃO
+========================================
+Execute o script de migração:
+  python migrar_dados.py
+
+Aguarde até ver a mensagem "✅ Migração concluída!"
+
+TAREFA 5: TESTAR A CONEXÃO
+==========================
+Crie um arquivo chamado "testar_conexao.py" com o seguinte código:
+
+---INICIO DO CODIGO---
+
+from sqlalchemy import create_engine, inspect
+
+postgres_url = "postgresql://postgres:Bancodaino%40@db.jqffbxrohqqymaeuqlqcd.supabase.co:5432/postgres"
+
+try:
+    engine = create_engine(postgres_url)
+    connection = engine.connect()
+    
+    # Inspecionar tabelas
+    inspector = inspect(engine)
+    tables = inspector.get_table_names()
+    
+    print("✅ Conexão com PostgreSQL bem-sucedida!")
+    print(f"📊 Tabelas encontradas: {len(tables)}")
+    for table in tables:
+        print(f"   - {table}")
+    
+    connection.close()
+except Exception as e:
+    print(f"❌ Erro na conexão: {e}")
+
+---FIM DO CODIGO---
+
+Execute:
+  python testar_conexao.py
+
+Se tudo estiver correto, você verá a lista de tabelas do PostgreSQL.
+
+TAREFA 6: ATUALIZAR O CÓDIGO PRINCIPAL
+=======================================
+Certifique-se de que o arquivo principal (app.py, main.py ou similar) está usando a variável de ambiente DATABASE_URL:
+
+Procure por linhas como:
+  engine = create_engine(os.getenv("DATABASE_URL"))
+
+Se não estiver usando variáveis de ambiente, altere para:
+  import os
+  DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:Bancodaino%40@db.jqffbxrohqqymaeuqlqcd.supabase.co:5432/postgres")
+  engine = create_engine(DATABASE_URL)
+
+RESUMO DO QUE FOI FEITO:
+========================
+1. ✅ Alterada a string de conexão de SQLite para PostgreSQL
+2. ✅ Instalado o driver psycopg2-binary
+3. ✅ Criado script de migração de dados
+4. ✅ Executada a migração
+5. ✅ Testada a conexão
+6. ✅ Atualizado o código principal para usar variáveis de ambiente
+
+Seu projeto agora está 100% conectado ao PostgreSQL na nuvem!
+
+================================================================================
+FIM DO PROMPT
+================================================================================

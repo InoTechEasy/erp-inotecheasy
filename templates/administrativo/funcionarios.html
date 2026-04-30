@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h4 class="mb-0">
+            <i class="bi bi-people-fill me-2"></i>Funcionários
+        </h4>
+        <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#modalFuncionario" onclick="limparFormulario()">
+            <i class="bi bi-plus-circle me-1"></i>Novo Funcionário
+        </button>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Nome</th>
+                        <th>Salário</th>
+                        <th>Dados Bancários</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for func in funcionarios %}
+                    <tr>
+                        <td>{{ func.id_funcionario }}</td>
+                        <td>{{ func.nome_funcionario }}</td>
+                        <td>{{ func.salario_funcionario | currency_format }}</td>
+                        <td>
+                            {% if func.dados_bancarios %}
+                                <span class="badge bg-success">
+                                    <i class="bi bi-check-circle me-1"></i>Cadastrado
+                                </span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">
+                                    <i class="bi bi-exclamation-circle me-1"></i>Pendente
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary btn-action" 
+                                    onclick="editarFuncionario({{ func.id_funcionario }}, '{{ func.nome_funcionario }}', {{ func.salario_funcionario }})"
+                                    title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-info btn-action" 
+                                    onclick="window.location.href='{{ url_for('administrativo.funcionario_detalhes', id=func.id_funcionario) }}'"
+                                    title="Ver Detalhes">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger btn-action" 
+                                    onclick="excluirFuncionario({{ func.id_funcionario }})"
+                                    title="Excluir">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Funcionário -->
+<div class="modal fade" id="modalFuncionario" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalFuncionarioTitle">
+                    <i class="bi bi-person-plus me-2"></i>Novo Funcionário
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formFuncionario">
+                    <input type="hidden" id="id_funcionario" name="id_funcionario">
+                    
+                    <div class="mb-3">
+                        <label for="nome" class="form-label">Nome do Funcionário</label>
+                        <input type="text" class="form-control" id="nome" name="nome" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="salario" class="form-label">Salário</label>
+                        <input type="text" class="form-control currency-input" id="salario" name="salario" required>
+                        <div class="form-text">Digite o valor em reais</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarFuncionario()">
+                    <i class="bi bi-save me-1"></i>Salvar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Dados Bancários -->
+<div class="modal fade" id="modalDadosBancarios" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-bank me-2"></i>Cadastrar Dados Bancários
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Deseja cadastrar os dados bancários agora?
+                </div>
+                
+                <form id="formDadosBancarios">
+                    <input type="hidden" id="db_id_funcionario" name="id_funcionario">
+                    <input type="hidden" id="db_id_dados" name="id_dados">
+                    
+                    <div class="mb-3">
+                        <label for="id_banco" class="form-label">Banco</label>
+                        <select class="form-select" id="id_banco" name="id_banco" required>
+                            <option value="">Selecione...</option>
+                            {% for banco in bancos %}
+                            <option value="{{ banco.ID_BANCO }}">{{ banco.NOME_BANCO }} ({{ banco.COD_BANCO }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="tipo_conta" class="form-label">Tipo de Conta</label>
+                        <select class="form-select" id="tipo_conta" name="tipo_conta" required>
+                            <option value="">Selecione...</option>
+                            {% for tc in tipos_conta %}
+                            <option value="{{ tc.id }}">{{ tc.descricao }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="nome_titular" class="form-label">Nome do Titular</label>
+                        <input type="text" class="form-control" id="nome_titular" name="nome_titular" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="tipo_chave_pix" class="form-label">Tipo de Chave PIX</label>
+                        <select class="form-select" id="tipo_chave_pix" name="tipo_chave_pix" required>
+                            <option value="">Selecione...</option>
+                            {% for tp in tipos_pix %}
+                            <option value="{{ tp.id }}">{{ tp.descricao }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="chave_pix" class="form-label">Chave PIX</label>
+                        <input type="text" class="form-control" id="chave_pix" name="chave_pix" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Depois</button>
+                <button type="button" class="btn btn-primary" onclick="salvarDadosBancarios()">
+                    <i class="bi bi-save me-1"></i>Cadastrar Agora
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Filtro para formatar moeda
+const formatCurrency = (value) => {
+    return value.toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+    });
+};
+
+// Máscara de input de moeda BRL
+const maskCurrency = (value) => {
+    value = value.replace(/\D/g, '');
+    value = (value / 100).toFixed(2) + '';
+    value = value.replace('.', ',');
+    value = value.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+    return 'R$ ' + value;
+};
+
+$(document).ready(function() {
+    $('#salario').on('input', function() {
+        let value = $(this).val().replace(/\D/g, '');
+        if (value) {
+            $(this).val(maskCurrency(value));
+        }
+    });
+});
+
+function limparFormulario() {
+    $('#formFuncionario')[0].reset();
+    $('#id_funcionario').val('');
+    $('#modalFuncionarioTitle').html('<i class="bi bi-person-plus me-2"></i>Novo Funcionário');
+}
+
+function editarFuncionario(id, nome, salario) {
+    $('#id_funcionario').val(id);
+    $('#nome').val(nome);
+    $('#salario').val(formatCurrency(salario));
+    $('#modalFuncionarioTitle').html('<i class="bi bi-pencil me-2"></i>Editar Funcionário');
+    $('#modalFuncionario').modal('show');
+}
+
+function salvarFuncionario() {
+    const nome = $('#nome').val();
+    const salario = $('#salario').val();
+    
+    if (!nome || !salario) {
+        alert('Preencha todos os campos!');
+        return;
+    }
+    
+    $.ajax({
+        url: '/administrativo/funcionario/salvar',
+        method: 'POST',
+        data: $('#formFuncionario').serialize(),
+        success: function(response) {
+            if (response.success) {
+                $('#modalFuncionario').modal('hide');
+                
+                if (response.action === 'create') {
+                    // Perguntar se deseja cadastrar dados bancários
+                    $('#db_id_funcionario').val(response.id);
+                    $('#db_id_dados').val('');
+                    $('#formDadosBancarios')[0].reset();
+                    $('#nome_titular').val(nome);
+                    $('#modalDadosBancarios').modal('show');
+                } else {
+                    location.reload();
+                }
+            }
+        },
+        error: function() {
+            alert('Erro ao salvar funcionário!');
+        }
+    });
+}
+
+function excluirFuncionario(id) {
+    if (confirm('Tem certeza que deseja excluir este funcionário?')) {
+        $.ajax({
+            url: '/administrativo/funcionario/excluir/' + id,
+            method: 'POST',
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                }
+            },
+            error: function() {
+                alert('Erro ao excluir funcionário!');
+            }
+        });
+    }
+}
+
+function salvarDadosBancarios() {
+    const id_banco = $('#id_banco').val();
+    const tipo_conta = $('#tipo_conta').val();
+    const nome_titular = $('#nome_titular').val();
+    const tipo_chave_pix = $('#tipo_chave_pix').val();
+    const chave_pix = $('#chave_pix').val();
+    
+    if (!id_banco || !tipo_conta || !nome_titular || !tipo_chave_pix || !chave_pix) {
+        alert('Preencha todos os campos!');
+        return;
+    }
+    
+    $.ajax({
+        url: '/administrativo/dados-bancarios/salvar',
+        method: 'POST',
+        data: $('#formDadosBancarios').serialize(),
+        success: function(response) {
+            if (response.success) {
+                $('#modalDadosBancarios').modal('hide');
+                location.reload();
+            }
+        },
+        error: function() {
+            alert('Erro ao salvar dados bancários!');
+        }
+    });
+}
+</script>
+{% endblock %}

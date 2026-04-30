@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h4 class="mb-0">
+            <i class="bi bi-file-earmark-text me-2"></i>Propostas Comerciais
+        </h4>
+        <a href="{{ url_for('comercial.nova_proposta') }}" class="btn btn-light btn-sm">
+            <i class="bi bi-plus-lg me-1"></i>Nova Proposta
+        </a>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Número</th>
+                        <th>Cliente</th>
+                        <th>Data Emissão</th>
+                        <th>Validade</th>
+                        <th>Status</th>
+                        <th>Valor Final</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for proposta in propostas %}
+                    <tr>
+                        <td><strong>{{ proposta.numero_proposta }}</strong></td>
+                        <td>{{ proposta.cliente.nome_razao_social if proposta.cliente else '-' }}</td>
+                        <td>{{ proposta.data_emissao.strftime('%d/%m/%Y') if proposta.data_emissao else '-' }}</td>
+                        <td>{{ proposta.data_validade.strftime('%d/%m/%Y') if proposta.data_validade else '-' }}</td>
+                        <td>
+                            <span class="badge 
+                                {% if proposta.status == 'Rascunho' %}bg-secondary
+                                {% elif proposta.status == 'Enviada' %}bg-info
+                                {% elif proposta.status == 'Aprovada' %}bg-success
+                                {% elif proposta.status == 'Rejeitada' %}bg-danger
+                                {% endif %}">
+                                {{ proposta.status }}
+                            </span>
+                        </td>
+                        <td>{{ proposta.valor_final|currency_format }}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('comercial.editar_proposta', id=proposta.id) }}" class="btn btn-outline-primary" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a href="{{ url_for('comercial.gerar_pdf', id=proposta.id) }}" class="btn btn-outline-secondary" title="Gerar PDF">
+                                    <i class="bi bi-file-earmark-pdf"></i>
+                                </a>
+                                <button onclick="excluirProposta({{ proposta.id }})" class="btn btn-outline-danger" title="Excluir">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted">
+                            <i class="bi bi-inbox me-2"></i>Nenhuma proposta cadastrada
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+function excluirProposta(id) {
+    if (confirm('Tem certeza que deseja excluir esta proposta?')) {
+        fetch(`{{ url_for('comercial.excluir_proposta', id=0) }}`.replace('0', id), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Erro ao excluir: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Erro ao excluir proposta');
+        });
+    }
+}
+</script>
+{% endblock %}

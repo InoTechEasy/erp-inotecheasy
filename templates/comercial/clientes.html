@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h4 class="mb-0">
+            <i class="bi bi-people me-2"></i>Clientes
+        </h4>
+        <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#clienteModal">
+            <i class="bi bi-plus-lg me-1"></i>Novo Cliente
+        </button>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Nome/Razão Social</th>
+                        <th>Tipo</th>
+                        <th>CPF/CNPJ</th>
+                        <th>E-mail</th>
+                        <th>Telefone</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cliente in clientes %}
+                    <tr>
+                        <td><strong>{{ cliente.nome_razao_social }}</strong></td>
+                        <td>
+                            <span class="badge {% if cliente.tipo_pessoa == 'F' %}bg-info{% else %}bg-warning{% endif %}">
+                                {% if cliente.tipo_pessoa == 'F' %}Física{% else %}Jurídica{% endif %}
+                            </span>
+                        </td>
+                        <td>{{ cliente.cpf_cnpj }}</td>
+                        <td>{{ cliente.email or '-' }}</td>
+                        <td>{{ cliente.telefone or '-' }}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary" onclick="editarCliente({{ cliente.id }}, '{{ cliente.tipo_pessoa }}', '{{ cliente.cpf_cnpj }}', '{{ cliente.nome_razao_social }}', '{{ cliente.email or '' }}', '{{ cliente.telefone or '' }}', '{{ cliente.endereco_completo or '' }}')">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-outline-danger" onclick="excluirCliente({{ cliente.id }})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">
+                            <i class="bi bi-inbox me-2"></i>Nenhum cliente cadastrado
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Cliente -->
+<div class="modal fade" id="clienteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-person me-2"></i>
+                    <span id="modalTitle">Novo Cliente</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="clienteForm">
+                <div class="modal-body">
+                    <input type="hidden" id="clienteId">
+                    <div class="mb-3">
+                        <label class="form-label">Tipo de Pessoa *</label>
+                        <select class="form-select" id="tipoPessoa" required>
+                            <option value="F">Física</option>
+                            <option value="J">Jurídica</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">CPF/CNPJ *</label>
+                        <input type="text" class="form-control" id="cpfCnpj" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nome/Razão Social *</label>
+                        <input type="text" class="form-control" id="nomeRazaoSocial" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">E-mail</label>
+                        <input type="email" class="form-control" id="email">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Telefone</label>
+                        <input type="text" class="form-control" id="telefone">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Endereço Completo</label>
+                        <textarea class="form-control" id="enderecoCompleto" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Editar cliente
+function editarCliente(id, tipo, cpf, nome, email, telefone, endereco) {
+    document.getElementById('clienteId').value = id;
+    document.getElementById('tipoPessoa').value = tipo;
+    document.getElementById('cpfCnpj').value = cpf;
+    document.getElementById('nomeRazaoSocial').value = nome;
+    document.getElementById('email').value = email;
+    document.getElementById('telefone').value = telefone;
+    document.getElementById('enderecoCompleto').value = endereco;
+    document.getElementById('modalTitle').textContent = 'Editar Cliente';
+    
+    new bootstrap.Modal(document.getElementById('clienteModal')).show();
+}
+
+// Excluir cliente
+function excluirCliente(id) {
+    if (confirm('Tem certeza que deseja excluir este cliente?')) {
+        fetch('{{ url_for("comercial.excluir_cliente", id=0) }}'.replace('0', id), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Erro ao excluir: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Erro ao excluir cliente');
+        });
+    }
+}
+
+// Limpar modal ao abrir
+document.getElementById('clienteModal').addEventListener('show.bs.modal', function() {
+    if (!document.getElementById('clienteId').value) {
+        document.getElementById('clienteForm').reset();
+        document.getElementById('clienteId').value = '';
+        document.getElementById('modalTitle').textContent = 'Novo Cliente';
+    }
+});
+
+// Salvar cliente
+document.getElementById('clienteForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData();
+    formData.append('id_cliente', document.getElementById('clienteId').value);
+    formData.append('tipo_pessoa', document.getElementById('tipoPessoa').value);
+    formData.append('cpf_cnpj', document.getElementById('cpfCnpj').value);
+    formData.append('nome_razao_social', document.getElementById('nomeRazaoSocial').value);
+    formData.append('email', document.getElementById('email').value);
+    formData.append('telefone', document.getElementById('telefone').value);
+    formData.append('endereco_completo', document.getElementById('enderecoCompleto').value);
+    
+    fetch('{{ url_for("comercial.salvar_cliente") }}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('clienteModal')).hide();
+            location.reload();
+        } else {
+            alert('Erro ao salvar: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Erro ao salvar cliente');
+    });
+});
+</script>
+{% endblock %}

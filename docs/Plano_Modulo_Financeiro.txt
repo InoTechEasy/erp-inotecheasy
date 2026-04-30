@@ -1,0 +1,107 @@
+PLANO TECNICO DE DESENVOLVIMENTO: MODULO FINANCEIRO (INOVACAO TECNOLOGICA)
+================================================================================
+
+1. OBJETIVO DO DOCUMENTO E ARQUITETURA DE DADOS
+
+Este documento serve como especificacao tecnica detalhada para a criacao do modulo Financeiro do ERP da InoTechEasy (empresa de Inovacao Tecnologica, desenvolvimento de software e ERPs). O foco e garantir uma arquitetura de banco de dados robusta, escalavel e perfeitamente integrada com o modulo Comercial (Propostas), permitindo lancamentos de Receitas, Despesas e Investimentos. A estrutura foi desenhada para facilitar a criacao de Dashboards futuros (BI/Retool) e a geracao de relatorios contabeis como o DRE (Demonstrativo de Resultados do Exercicio).
+
+Para garantir flexibilidade e evitar redundancia, a arquitetura recomendada utiliza uma tabela central de "Lancamentos Financeiros" (f_lancamentos), categorizada por tipos, em vez de tabelas separadas para contas a pagar e a receber. Essa abordagem centralizada facilita imensamente a geracao de relatorios de Fluxo de Caixa e a construcao de Dashboards.
+
+Alem da tabela principal, o sistema deve contar com tabelas auxiliares (dimensoes) altamente especificas para categorizacao. A utilizacao de tabelas como dTipo_Pagamento, dTipo_Lancamento, dContas (com hierarquia pai/filha), dCentros_Custos e dDocumentos garante que os dados sejam inseridos de forma padronizada, evitando erros de digitacao e permitindo agrupamentos precisos nos relatorios.
+
+--------------------------------------------------------------------------------
+
+2. ESTRUTURA DAS TABELAS DE DIMENSAO (AUXILIARES)
+
+As tabelas de dimensao sao a base para a organizacao dos dados financeiros. Elas devem ser pre-populadas e raramente excluidas (utilizar Soft Delete se necessario) para manter a integridade historica.
+
+A tabela "dTipo_Lancamento" define a natureza macro da movimentacao financeira, contendo as opcoes 'Receita', 'Despesa' e 'Investimento'. A tabela "dTipo_Pagamento" define a forma como o valor foi ou sera transacionado, com opcoes como 'Fatura/Prazo', 'Cartao de Credito', 'A Vista', 'PIX' e 'Transferencia Bancaria'.
+
+A tabela "dDocumentos" define o tipo de documento que comprova a transacao, incluindo 'Nota Fiscal de Servico (NFS-e)', 'Recibo', 'Boleto', 'Contrato de Software', 'Fatura de Cloud' e 'Sem Documento'. Por fim, a tabela "dCentros_Custos" permite alocar despesas e receitas a areas ou projetos especificos, como 'Administrativo', 'Comercial', 'Desenvolvimento Interno', 'Projeto Cliente X' ou 'Infraestrutura Cloud'.
+
+--------------------------------------------------------------------------------
+
+3. ESTRUTURA DA TABELA DE CONTAS (dContas - Hierarquica)
+
+Esta e a tabela mais critica para a geracao do DRE, adaptada para a realidade de uma empresa de tecnologia (Software house/Inovacao). Ela utiliza uma estrutura hierarquica (id_pai) para agrupar subcontas dentro de categorias maiores.
+
+| Nome da Coluna | Tipo de Dado | Descricao e Regras de Negocio |
+| :--- | :--- | :--- |
+| id | SERIAL (PK) | Identificador unico da conta. |
+| id_pai | INTEGER (FK) | Referencia a propria tabela dContas. Null para contas macro. |
+| nome | VARCHAR(100) | Nome da conta ou subconta. |
+| tipo_dre | VARCHAR(50) | 'Receita Bruta', 'Deducoes', 'Custos', 'Despesas Operacionais', 'Investimentos'. |
+
+Abaixo, apresentamos a sugestao de populacao inicial, com as contas macro e suas respectivas filhas, focadas em tecnologia:
+
+Para a conta macro "Infraestrutura e Cloud" (Custos Diretos), sugerimos as filhas: Hospedagem de Servidores (AWS, Google Cloud, Azure), Banco de Dados em Nuvem, Servicos de Email/SMTP, Dominios e Certificados SSL, e APIs de Terceiros (OpenAI, Google Maps, etc).
+
+A conta macro "Despesas Administrativas" deve conter: Aluguel do Escritorio, Agua, Luz, Telefone/Internet Fibra, Contabilidade, Material De Escritorio, Limpeza, Manutencao Do Escritorio, Seguro Fianca Residencial e Farmacia/Medicamentos.
+
+Para "Softwares e Assinaturas Internas", sugerimos: Ferramentas de Desenvolvimento (IDEs, GitHub Copilot), Gestao de Projetos (Jira, Trello, Asana), Design e Prototipagem (Figma, Adobe), e Ferramentas de Comunicacao (Slack, Zoom, Google Workspace).
+
+Para "Despesas Bancarias", sugerimos: Tarifas Bancarias, Tarifa TED, Tarifa PIX, Saque e Juros, Multas E Encargos.
+
+Para "Despesas Com Pessoal", as filhas seriam: Salarios (Desenvolvedores, Comercial, Admin), Encargos Sociais (INSS/FGTS), Beneficios (VR/VA/VT), Retirada Diretoria (Pro-labore) e Treinamentos/Cursos de Capacitacao.
+
+Na categoria "Equipamentos e Hardware", podemos ter: Aquisicao de Notebooks/PCs, Monitores e Perifericos, e Servidores Locais.
+
+A conta "Impostos, Tributos E Taxas" deve conter: Simples Nacional / Lucro Presumido, ISS (Imposto sobre Servicos) e Taxas Municipais/Alvaras.
+
+Para "Servicos Terceirizados", as filhas seriam: Consultoria Especializada (Seguranca da Informacao, LGPD), Freelancers de Desenvolvimento, e Servicos de Marketing/Trafego Pago.
+
+Para "Alimentacao E Refeicoes" e "Viagens E Hospedagem" (para visitas a clientes ou eventos de tecnologia), mantemos as filhas padrao: Cafe, Almoco, Jantar, Passagem Aerea, Hotel, etc.
+
+As contas de entrada de capital seriam "Receita Total" (com as filhas: Desenvolvimento de Software Sob Medida, Licenciamento de ERP/SaaS, Consultoria em Inovacao, Suporte e Manutencao Mensal) e "Investimento Total" (com as filhas: Aporte de Socios, Financiamento para Inovacao).
+
+Por fim, a conta "Descontos Gerais" deve conter: Descontos Concedidos a Clientes, Descontos Obtidos de Fornecedores e Adiantamento/Desconto de Funcionarios. O sistema deve permitir a insercao de valores negativos na tabela f_lancamentos para tratar descontos no DRE.
+
+--------------------------------------------------------------------------------
+
+4. ESTRUTURA DA TABELA PRINCIPAL (f_lancamentos)
+
+Esta tabela centraliza todas as movimentacoes financeiras da empresa, utilizando as dimensoes criadas acima.
+
+| Nome da Coluna | Tipo de Dado | Descricao e Regras de Negocio |
+| :--- | :--- | :--- |
+| id | SERIAL (PK) | Identificador unico do lancamento. |
+| id_tipo_lancamento | INTEGER (FK) | Chave estrangeira para dTipo_Lancamento. |
+| id_tipo_pagamento | INTEGER (FK) | Chave estrangeira para dTipo_Pagamento. |
+| id_conta | INTEGER (FK) | Chave estrangeira para dContas (A conta especifica/filha). |
+| id_centro_custo | INTEGER (FK) | Chave estrangeira para dCentros_Custos. |
+| id_documento | INTEGER (FK) | Chave estrangeira para dDocumentos. |
+| status | VARCHAR(20) | Dominio: 'PENDENTE', 'PAGO', 'RECEBIDO', 'CANCELADO'. |
+| descricao | VARCHAR(255) | Descricao curta do lancamento. |
+| valor_original | DECIMAL(15,2) | Valor bruto do documento ou parcela. |
+| valor_pago | DECIMAL(15,2) | Valor efetivamente pago ou recebido. |
+| data_documento | DATE | Data de emissao do documento comprobatorio. |
+| data_vencimento | DATE | Data limite para pagamento ou recebimento. |
+| data_pagamento | DATE | Data em que o valor efetivamente entrou ou saiu da conta. |
+| entidade_id | INTEGER (FK) | Chave estrangeira para a tabela de Clientes ou Fornecedores. |
+| proposta_id | INTEGER (FK) | Vinculo direto com o modulo Comercial (Opcional). |
+| projeto_id | INTEGER (FK) | Vinculo direto com o modulo de Projetos (Opcional). |
+| observacoes | TEXT | Detalhes adicionais. |
+| created_at | TIMESTAMP | Data e hora da criacao do registro (Default: NOW() em UTC-03:00). |
+| updated_at | TIMESTAMP | Data e hora da ultima alteracao (UTC-03:00). |
+
+--------------------------------------------------------------------------------
+
+5. FLUXO DE INTEGRACAO COM O MODULO COMERCIAL
+
+A integracao entre os modulos Comercial e Financeiro deve ser automatizada para evitar dupla digitacao e garantir a integridade dos dados. O fluxo inicia quando uma Proposta de Desenvolvimento ou Licenciamento no modulo Comercial tem seu status alterado para "APROVADA". O sistema deve interceptar essa acao (via trigger no banco de dados ou listener no backend Python) e gerar automaticamente os lancamentos na tabela f_lancamentos.
+
+O passo a passo logico para a implementacao no backend (ex: SQLAlchemy) e o seguinte: Primeiro, o usuario altera o status da Proposta para "APROVADA". Em seguida, o backend le o campo de condicoes de pagamento ou a tabela auxiliar de parcelamento vinculada a essa proposta. O sistema entao itera sobre as parcelas definidas. Para cada parcela, o backend executa um INSERT na tabela f_lancamentos, definindo o id_tipo_lancamento como 'Receita', o id_conta como 'Desenvolvimento de Software Sob Medida' (ou a conta correspondente ao servico vendido), o status como 'PENDENTE', o valor_original igual ao valor da parcela, e a data_vencimento calculada com base na condicao comercial. Os IDs do Cliente e da Proposta tambem sao vinculados automaticamente.
+
+--------------------------------------------------------------------------------
+
+6. INSTRUCOES PARA A IA (PROMPT SUGERIDO PARA O WINDSURF)
+
+"Atue como um Engenheiro de Software Senior. Preciso implementar o modulo Financeiro do meu ERP (focado em uma empresa de Inovacao Tecnologica e Desenvolvimento de Software) em Python utilizando PostgreSQL.
+
+Sua primeira tarefa e criar os modelos SQLAlchemy para as tabelas de dimensao: 'dTipo_Lancamento', 'dTipo_Pagamento', 'dDocumentos', 'dCentros_Custos' e 'dContas'. Atencao especial a tabela 'dContas', que deve ter uma estrutura hierarquica (id_pai referenciando a propria tabela) para permitir a geracao de DRE, utilizando as categorias focadas em tecnologia (Infraestrutura Cloud, Softwares Internos, Receita de SaaS, etc) detalhadas neste documento.
+
+Sua segunda tarefa e criar o modelo para a tabela principal 'f_lancamentos', seguindo estritamente a estrutura de chaves estrangeiras detalhada neste documento. Certifique-se de implementar os campos de auditoria (created_at, updated_at) configurados para o fuso horario UTC-03:00, alem das datas operacionais (data_documento, data_vencimento, data_pagamento).
+
+Sua terceira tarefa e criar um listener/sinal no SQLAlchemy (ou na camada de servico) que observe a tabela de Propostas. Quando uma proposta mudar para o status 'APROVADA', o sistema deve gerar automaticamente os registros pendentes na tabela f_lancamentos, vinculando o id_tipo_lancamento como Receita, a conta correta, o ID da proposta e do cliente, e calculando as datas de vencimento conforme as condicoes de pagamento.
+
+Por fim, crie as rotas de API (CRUD) para permitir a insercao manual de Despesas e Investimentos, garantindo que a exclusao de registros seja feita via Soft Delete (alterando o status para 'CANCELADO') para manter a integridade referencial com as tabelas de dimensao."

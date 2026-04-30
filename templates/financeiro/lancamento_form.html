@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h4 class="mb-0">
+            <i class="bi bi-cash-coin me-2"></i>
+            {% if lancamento %}Editar Lançamento{% else %}Novo Lançamento{% endif %}
+        </h4>
+        <a href="{{ url_for('financeiro.lancamentos') }}" class="btn btn-light btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>Voltar
+        </a>
+    </div>
+    <div class="card-body">
+        <form id="lancamentoForm">
+            <input type="hidden" id="lancamentoId" value="{{ lancamento.id if lancamento else '' }}">
+            
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Informações Básicas</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Tipo de Lançamento *</label>
+                                <select class="form-select" id="idTipoLancamento" required>
+                                    <option value="">Selecione...</option>
+                                    {% for tipo in tipos_lancamento %}
+                                    <option value="{{ tipo.id }}" 
+                                        {% if lancamento and lancamento.id_tipo_lancamento == tipo.id %}selected{% endif %}>
+                                        {{ tipo.descricao }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Tipo de Pagamento *</label>
+                                <select class="form-select" id="idTipoPagamento" required>
+                                    <option value="">Selecione...</option>
+                                    {% for tipo in tipos_pagamento %}
+                                    <option value="{{ tipo.id }}" 
+                                        {% if lancamento and lancamento.id_tipo_pagamento == tipo.id %}selected{% endif %}>
+                                        {{ tipo.descricao }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Conta *</label>
+                                <select class="form-select" id="idConta" required>
+                                    <option value="">Selecione...</option>
+                                    {% for conta in contas %}
+                                    <option value="{{ conta.id }}" 
+                                        {% if lancamento and lancamento.id_conta == conta.id %}selected{% endif %}>
+                                        {{ conta.nome }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="bi bi-calendar me-2"></i>Datas e Valores</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Descrição *</label>
+                                <input type="text" class="form-control" id="descricao" required
+                                    value="{{ lancamento.descricao if lancamento else '' }}">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Valor Original *</label>
+                                <input type="number" step="0.01" class="form-control" id="valorOriginal" required
+                                    value="{{ lancamento.valor_original if lancamento else '' }}">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Valor Pago</label>
+                                <input type="number" step="0.01" class="form-control" id="valorPago"
+                                    value="{{ lancamento.valor_pago if lancamento else '' }}">
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Data Documento</label>
+                                    <input type="date" class="form-control" id="dataDocumento"
+                                        value="{{ lancamento.data_documento.strftime('%Y-%m-%d') if lancamento and lancamento.data_documento else '' }}">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Data Vencimento</label>
+                                    <input type="date" class="form-control" id="dataVencimento"
+                                        value="{{ lancamento.data_vencimento.strftime('%Y-%m-%d') if lancamento and lancamento.data_vencimento else '' }}">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Data Pagamento</label>
+                                    <input type="date" class="form-control" id="dataPagamento"
+                                        value="{{ lancamento.data_pagamento.strftime('%Y-%m-%d') if lancamento and lancamento.data_pagamento else '' }}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="bi bi-tags me-2"></i>Classificação</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Centro de Custo</label>
+                                <select class="form-select" id="idCentroCusto">
+                                    <option value="">Selecione...</option>
+                                    {% for centro in centros_custo %}
+                                    <option value="{{ centro.id }}" 
+                                        {% if lancamento and lancamento.id_centro_custo == centro.id %}selected{% endif %}>
+                                        {{ centro.descricao }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Tipo de Documento</label>
+                                <select class="form-select" id="idDocumento">
+                                    <option value="">Selecione...</option>
+                                    {% for doc in documentos %}
+                                    <option value="{{ doc.id }}" 
+                                        {% if lancamento and lancamento.id_documento == doc.id %}selected{% endif %}>
+                                        {{ doc.descricao }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Cliente/Fornecedor</label>
+                                <select class="form-select" id="entidadeId">
+                                    <option value="">Selecione...</option>
+                                    {% for cliente in clientes %}
+                                    <option value="{{ cliente.id }}" 
+                                        {% if lancamento and lancamento.entidade_id == cliente.id %}selected{% endif %}>
+                                        {{ cliente.nome_razao_social }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="bi bi-card-text me-2"></i>Observações</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Observações</label>
+                                <textarea class="form-control" id="observacoes" rows="5">{{ lancamento.observacoes if lancamento else '' }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <a href="{{ url_for('financeiro.lancamentos') }}" class="btn btn-secondary">
+                    <i class="bi bi-x-lg me-1"></i>Cancelar
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg me-1"></i>Salvar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.getElementById('lancamentoForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const data = {
+        id: document.getElementById('lancamentoId').value || null,
+        id_tipo_lancamento: document.getElementById('idTipoLancamento').value,
+        id_tipo_pagamento: document.getElementById('idTipoPagamento').value,
+        id_conta: document.getElementById('idConta').value,
+        id_centro_custo: document.getElementById('idCentroCusto').value || null,
+        id_documento: document.getElementById('idDocumento').value || null,
+        descricao: document.getElementById('descricao').value,
+        valor_original: document.getElementById('valorOriginal').value,
+        valor_pago: document.getElementById('valorPago').value || 0,
+        data_documento: document.getElementById('dataDocumento').value || null,
+        data_vencimento: document.getElementById('dataVencimento').value || null,
+        data_pagamento: document.getElementById('dataPagamento').value || null,
+        entidade_id: document.getElementById('entidadeId').value || null,
+        observacoes: document.getElementById('observacoes').value || null
+    };
+    
+    fetch('{{ url_for("financeiro.salvar_lancamento") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            window.location.href = '{{ url_for("financeiro.lancamentos") }}';
+        } else {
+            alert('Erro ao salvar: ' + result.error);
+        }
+    })
+    .catch(error => {
+        alert('Erro ao salvar: ' + error);
+    });
+});
+</script>
+{% endblock %}
